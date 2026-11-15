@@ -455,7 +455,7 @@ metrics:
     depends_on:
       - logical_day
     null_rule: "never null (YYYY-MM-DD)"
-    implemented: false
+    implemented: true
 
   - name: avg_session_duration_mins
     window: daily
@@ -637,7 +637,7 @@ metrics:
     depends_on:
       - config.shift_start
     null_rule: "never null (HH:MM)"
-    implemented: false
+    implemented: true
 
   - name: shift_end
     window: daily
@@ -645,7 +645,7 @@ metrics:
     depends_on:
       - config.shift_end
     null_rule: "never null (HH:MM)"
-    implemented: false
+    implemented: true
 
   - name: after_hours_active_minutes
     window: daily
@@ -656,7 +656,7 @@ metrics:
       - shift_end
       - is_weekend
     null_rule: "0 if no activity outside shift hours (never null)"
-    implemented: false
+    implemented: true
 
   - name: after_hours_ratio
     window: daily
@@ -665,7 +665,7 @@ metrics:
       - after_hours_active_minutes
       - total_active_minutes
     null_rule: "null if total_active_minutes == 0"
-    implemented: false
+    implemented: true
 
   - name: late_night_flag
     window: daily
@@ -675,7 +675,7 @@ metrics:
       - late_night_window
       - late_night_min
     null_rule: "never null (true if active minutes in late_night_window >= late_night_min)"
-    implemented: false
+    implemented: true
 
   - name: after_hours_ratio_7d_avg
     window: daily
@@ -684,7 +684,7 @@ metrics:
       - after_hours_ratio
       - historical_daily_rollups
     null_rule: "null if fewer than 4 valid days with coverage_ratio >= 0.5"
-    implemented: false
+    implemented: true
 
   - name: consecutive_after_hours_days
     window: daily
@@ -694,7 +694,7 @@ metrics:
       - after_hours_day_min
       - historical_daily_rollups
     null_rule: "0 if today after_hours_active_minutes < after_hours_day_min (never null)"
-    implemented: false
+    implemented: true
 
   # ---------------------------------------------------------------------------
   # External / Export Joins (Spec Section 8)

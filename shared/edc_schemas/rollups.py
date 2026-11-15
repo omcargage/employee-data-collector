@@ -111,6 +111,7 @@ class RollupDaily(BaseModel):
     longest_lunch_break_mins: Optional[float] = Field(default=None, description="Longest break overlapping lunch window")
     lunch_work_ratio: Optional[float] = Field(default=None, description="Fraction of lunch window spent active")
     lunch_skipped_flag: Optional[bool] = Field(default=None, description="True if longest lunch break < no_lunch_break_min")
+    desk_dining_flag: Optional[bool] = Field(default=None, description="Desk dining flag (excluded per specification decision, remains null)")
 
     # Focus block metrics
     avg_focus_block_mins: Optional[float] = Field(default=None, description="Mean focus block duration in minutes")
