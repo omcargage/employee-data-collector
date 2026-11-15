@@ -1,0 +1,749 @@
+# EDC Metrics Registry
+# Authoritative registry mapping each metric column from docs/metrics_spec.md
+# Fields: name, window (15min|daily), tag (DIRECT|PROXY|CONFIG|EXTERNAL|EXCLUDED), depends_on, null_rule, implemented
+
+metrics:
+  # ---------------------------------------------------------------------------
+  # Metadata & Coverage (Spec Section 1)
+  # ---------------------------------------------------------------------------
+  - name: coverage_ratio
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - covered_s
+      - window_duration_s
+    null_rule: "null if window_duration_s == 0"
+    implemented: false
+
+  - name: low_coverage
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - coverage_ratio
+    null_rule: "never null; true if coverage_ratio < 0.5"
+    implemented: false
+
+  # ---------------------------------------------------------------------------
+  # Keyboard Metrics: 15-Minute Window (Spec Section 4)
+  # ---------------------------------------------------------------------------
+  - name: day_of_week
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - window_start_utc
+      - logical_day
+    null_rule: "never null (0=Monday, 6=Sunday)"
+    implemented: false
+
+  - name: is_weekend
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - day_of_week
+    null_rule: "never null (true if day_of_week in [5, 6])"
+    implemented: false
+
+  - name: hour_of_day
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - window_start_utc
+      - timezone
+    null_rule: "never null (local hour 0-23)"
+    implemented: false
+
+  - name: decimal_hour
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - window_start_utc
+      - timezone
+    null_rule: "never null (hour + minute / 60.0)"
+    implemented: false
+
+  - name: session_index_in_day
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - sessions
+      - window_start_utc
+    null_rule: "null if window has no active session at start"
+    implemented: false
+
+  - name: total_keystrokes
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - n_char
+      - n_backspace
+      - n_delete
+      - n_other_key
+    null_rule: "0 if no key events (never null)"
+    implemented: false
+
+  - name: char_keystrokes
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - n_char
+    null_rule: "0 if no char events (never null)"
+    implemented: false
+
+  - name: backspace_count
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - n_backspace
+    null_rule: "0 if no backspace events (never null)"
+    implemented: false
+
+  - name: delete_count
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - n_delete
+    null_rule: "0 if no delete events (never null)"
+    implemented: false
+
+  - name: total_correction_keys
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - backspace_count
+      - delete_count
+    null_rule: "0 if no correction keys (never null)"
+    implemented: false
+
+  - name: repeated_backspace_bursts
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - n_backspace_bursts
+    null_rule: "0 if no backspace bursts (never null)"
+    implemented: false
+
+  - name: mean_flight_time_ms
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - flight_times.sum
+      - flight_times.n
+    null_rule: "null if n < min_flight_intervals (default 10)"
+    implemented: false
+
+  - name: flight_time_std_ms
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - flight_times.sum
+      - flight_times.sum_sq
+      - flight_times.n
+    null_rule: "null if n < min_flight_intervals (default 10)"
+    implemented: false
+
+  - name: active_typing_ratio
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - active_typing_s
+      - covered_s
+    null_rule: "null if covered_s == 0"
+    implemented: false
+
+  - name: gross_wpm
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - char_keystrokes
+      - active_typing_s
+      - total_keystrokes
+    null_rule: "null if total_keystrokes < min_keystrokes (default 30) or active_typing_s == 0"
+    implemented: false
+
+  - name: net_wpm
+    window: 15min
+    tag: PROXY
+    depends_on:
+      - char_keystrokes
+      - total_correction_keys
+      - active_typing_s
+      - total_keystrokes
+    null_rule: "null if total_keystrokes < min_keystrokes (default 30) or active_typing_s == 0"
+    implemented: false
+
+  - name: backspace_ratio
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - backspace_count
+      - total_keystrokes
+    null_rule: "null if total_keystrokes < min_keystrokes (default 30)"
+    implemented: false
+
+  - name: correction_ratio
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - total_correction_keys
+      - total_keystrokes
+    null_rule: "null if total_keystrokes < min_keystrokes (default 30)"
+    implemented: false
+
+  - name: error_correction_efficiency
+    window: 15min
+    tag: PROXY
+    depends_on:
+      - char_keystrokes
+      - total_correction_keys
+      - total_keystrokes
+    null_rule: "null if char_keystrokes == 0 or total_keystrokes < min_keystrokes (default 30)"
+    implemented: false
+
+  - name: pause_before_correction_ms
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - sum_pause_before_correction_ms
+      - n_correction_runs
+    null_rule: "null if n_correction_runs == 0"
+    implemented: false
+
+  - name: n_bursts
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - bursts
+    null_rule: "0 if no bursts (never null)"
+    implemented: false
+
+  - name: mean_burst_len
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - sum_burst_len
+      - n_bursts
+    null_rule: "null if n_bursts == 0"
+    implemented: false
+
+  - name: n_long_silences_after_burst
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - bursts
+      - long_silence_s
+    null_rule: "0 if no bursts (never null)"
+    implemented: false
+
+  - name: burst_to_silence_ratio
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - n_bursts
+      - n_long_silences_after_burst
+    null_rule: "null if n_bursts == 0"
+    implemented: false
+
+  - name: keystroke_count
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - total_keystrokes
+    null_rule: "0 if no key events (identical to total_keystrokes)"
+    implemented: false
+
+  - name: keystrokes_per_second
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - total_keystrokes
+      - covered_s
+    null_rule: "null if covered_s == 0"
+    implemented: false
+
+  - name: average_keystroke_interval_seconds
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - mean_flight_time_ms
+    null_rule: "null if mean_flight_time_ms is null (mean_flight_time_ms / 1000)"
+    implemented: false
+
+  - name: keystroke_interval_stdev_seconds
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - flight_time_std_ms
+    null_rule: "null if flight_time_std_ms is null (flight_time_std_ms / 1000)"
+    implemented: false
+
+  - name: keystroke_coefficient_of_variation
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - flight_time_std_ms
+      - mean_flight_time_ms
+    null_rule: "null if flight_time_std_ms is null or mean_flight_time_ms == 0"
+    implemented: false
+
+  - name: mean_dwell_time_ms
+    window: 15min
+    tag: PROXY
+    depends_on:
+      - dwell.sum
+      - dwell.n
+    null_rule: "null if key_dwell capability unavailable or n == 0"
+    implemented: false
+
+  - name: dwell_time_std_ms
+    window: 15min
+    tag: PROXY
+    depends_on:
+      - dwell.sum
+      - dwell.sum_sq
+      - dwell.n
+    null_rule: "null if key_dwell capability unavailable or n < 2"
+    implemented: false
+
+  # ---------------------------------------------------------------------------
+  # Mouse Metrics: 15-Minute Window (Spec Section 5)
+  # ---------------------------------------------------------------------------
+  - name: timestamp
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - window_start_utc
+    null_rule: "never null (ISO 8601 UTC timestamp)"
+    implemented: false
+
+  - name: click_count
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - n_clicks
+    null_rule: "0 if no clicks (never null)"
+    implemented: false
+
+  - name: clicks_per_second
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - click_count
+      - covered_s
+    null_rule: "null if covered_s == 0"
+    implemented: false
+
+  - name: average_interval_seconds
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - click_intervals.sum
+      - click_intervals.n
+    null_rule: "null if n < min_clicks (default 5)"
+    implemented: false
+
+  - name: click_interval_stdev_seconds
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - click_intervals.sum
+      - click_intervals.sum_sq
+      - click_intervals.n
+    null_rule: "null if n < min_clicks (default 5)"
+    implemented: false
+
+  - name: coefficient_of_variation
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - click_interval_stdev_seconds
+      - average_interval_seconds
+    null_rule: "null if n < min_clicks (default 5) or average_interval_seconds == 0"
+    implemented: false
+
+  - name: average_speed_px_s
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - sum_speed
+      - n_moving_bins
+    null_rule: "null if n_moving_bins == 0"
+    implemented: false
+
+  - name: average_abs_accel_px_s2
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - sum_abs_accel
+      - n_accel_samples
+    null_rule: "null if n_accel_samples == 0"
+    implemented: false
+
+  - name: total_abs_scroll_ticks
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - n_scroll_ticks_abs
+    null_rule: "0 if no scroll events (never null)"
+    implemented: false
+
+  - name: average_abs_scroll_ticks_s
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - total_abs_scroll_ticks
+      - covered_s
+    null_rule: "null if covered_s == 0"
+    implemented: false
+
+  - name: double_click_count
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - n_double_clicks
+    null_rule: "0 if no double clicks (never null)"
+    implemented: false
+
+  - name: rapid_click_runs
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - n_rapid_click_runs
+    null_rule: "0 if no rapid click runs (never null)"
+    implemented: false
+
+  - name: scroll_reversal_count
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - n_scroll_reversals
+    null_rule: "0 if no reversals (never null)"
+    implemented: false
+
+  - name: pointer_idle_s
+    window: 15min
+    tag: DIRECT
+    depends_on:
+      - mouse_events
+      - covered_s
+    null_rule: "null if covered_s == 0"
+    implemented: false
+
+  - name: short_idle_total_s
+    window: 15min
+    tag: PROXY
+    depends_on:
+      - input_gaps
+      - idle_threshold_s
+      - session_break_gap_s
+    null_rule: "0 if no qualifying short idle gaps (never null)"
+    implemented: false
+
+  - name: click_force_hard_taps
+    window: 15min
+    tag: EXCLUDED
+    depends_on: []
+    null_rule: "always null (hardware/API unavailable through OS)"
+    implemented: false
+
+  # ---------------------------------------------------------------------------
+  # Session, Break, Stretch, Lunch, Focus Metrics: Daily (Spec Section 6)
+  # ---------------------------------------------------------------------------
+  - name: day
+    window: daily
+    tag: DIRECT
+    depends_on:
+      - logical_day
+    null_rule: "never null (YYYY-MM-DD)"
+    implemented: false
+
+  - name: avg_session_duration_mins
+    window: daily
+    tag: DIRECT
+    depends_on:
+      - sessions
+    null_rule: "null if no sessions >= min_session_s (default 120s)"
+    implemented: false
+
+  - name: max_session_duration_mins
+    window: daily
+    tag: DIRECT
+    depends_on:
+      - sessions
+    null_rule: "null if no sessions >= min_session_s"
+    implemented: false
+
+  - name: total_breaks_count
+    window: daily
+    tag: DIRECT
+    depends_on:
+      - breaks
+    null_rule: "0 if no breaks detected (never null)"
+    implemented: false
+
+  - name: avg_break_duration_mins
+    window: daily
+    tag: DIRECT
+    depends_on:
+      - breaks
+    null_rule: "null if total_breaks_count == 0"
+    implemented: false
+
+  - name: extended_sessions_count
+    window: daily
+    tag: DIRECT
+    depends_on:
+      - sessions
+      - extended_session_min
+    null_rule: "0 if no sessions (never null)"
+    implemented: false
+
+  - name: longest_stretch_duration_mins
+    window: daily
+    tag: DIRECT
+    depends_on:
+      - continuous_stretches
+    null_rule: "null if no continuous stretches detected"
+    implemented: false
+
+  - name: stretch_start_hour
+    window: daily
+    tag: DIRECT
+    depends_on:
+      - continuous_stretches
+      - timezone
+    null_rule: "null if no continuous stretches detected"
+    implemented: false
+
+  - name: post_stretch_break_mins
+    window: daily
+    tag: DIRECT
+    depends_on:
+      - continuous_stretches
+      - input_gaps
+    null_rule: "null if no stretches or if logical day ended immediately after stretch"
+    implemented: false
+
+  - name: stretch_intensity_pct
+    window: daily
+    tag: PROXY
+    depends_on:
+      - continuous_stretches
+      - active_minutes
+    null_rule: "null if longest_stretch_duration_mins is null or 0"
+    implemented: false
+
+  - name: stretch_to_total_work_ratio
+    window: daily
+    tag: DIRECT
+    depends_on:
+      - longest_stretch_duration_mins
+      - total_work_minutes
+    null_rule: "null if total_work_minutes == 0"
+    implemented: false
+
+  - name: lunch_active_mins
+    window: daily
+    tag: DIRECT
+    depends_on:
+      - active_minutes
+      - lunch_window
+    null_rule: "0 if no activity in lunch window (never null)"
+    implemented: false
+
+  - name: longest_lunch_break_mins
+    window: daily
+    tag: DIRECT
+    depends_on:
+      - input_gaps
+      - lunch_window
+    null_rule: "null if lunch window is mostly unknown gaps"
+    implemented: false
+
+  - name: lunch_work_ratio
+    window: daily
+    tag: DIRECT
+    depends_on:
+      - lunch_active_mins
+      - lunch_window
+    null_rule: "null if lunch window duration is 0"
+    implemented: false
+
+  - name: lunch_skipped_flag
+    window: daily
+    tag: PROXY
+    depends_on:
+      - longest_lunch_break_mins
+      - no_lunch_break_min
+    null_rule: "null if longest_lunch_break_mins is null"
+    implemented: false
+
+  - name: desk_dining_flag
+    window: daily
+    tag: PROXY
+    depends_on:
+      - longest_lunch_break_mins
+      - lunch_work_ratio
+    null_rule: "null (unreliable behavioural proxy per spec section 6/9)"
+    implemented: false
+
+  - name: avg_focus_block_mins
+    window: daily
+    tag: PROXY
+    depends_on:
+      - focus_blocks
+    null_rule: "null if no focus blocks detected"
+    implemented: false
+
+  - name: max_focus_block_mins
+    window: daily
+    tag: PROXY
+    depends_on:
+      - focus_blocks
+    null_rule: "null if no focus blocks detected"
+    implemented: false
+
+  - name: deep_work_blocks_count
+    window: daily
+    tag: PROXY
+    depends_on:
+      - focus_blocks
+      - deep_work_min
+    null_rule: "0 if no deep work blocks detected (never null)"
+    implemented: false
+
+  - name: total_focus_time_hours
+    window: daily
+    tag: PROXY
+    depends_on:
+      - focus_blocks
+    null_rule: "0 if no focus blocks detected (never null)"
+    implemented: false
+
+  - name: focus_fragmentation_ratio
+    window: daily
+    tag: PROXY
+    depends_on:
+      - total_focus_time_hours
+      - total_work_minutes
+    null_rule: "null if total_work_minutes == 0"
+    implemented: false
+
+  # ---------------------------------------------------------------------------
+  # Work-Hours and After-Hours Metrics: Daily (Spec Section 7)
+  # ---------------------------------------------------------------------------
+  - name: shift_start
+    window: daily
+    tag: CONFIG
+    depends_on:
+      - config.shift_start
+    null_rule: "never null (HH:MM)"
+    implemented: false
+
+  - name: shift_end
+    window: daily
+    tag: CONFIG
+    depends_on:
+      - config.shift_end
+    null_rule: "never null (HH:MM)"
+    implemented: false
+
+  - name: after_hours_active_minutes
+    window: daily
+    tag: DIRECT
+    depends_on:
+      - active_minutes
+      - shift_start
+      - shift_end
+      - is_weekend
+    null_rule: "0 if no activity outside shift hours (never null)"
+    implemented: false
+
+  - name: after_hours_ratio
+    window: daily
+    tag: DIRECT
+    depends_on:
+      - after_hours_active_minutes
+      - total_active_minutes
+    null_rule: "null if total_active_minutes == 0"
+    implemented: false
+
+  - name: late_night_flag
+    window: daily
+    tag: DIRECT
+    depends_on:
+      - active_minutes
+      - late_night_window
+      - late_night_min
+    null_rule: "never null (true if active minutes in late_night_window >= late_night_min)"
+    implemented: false
+
+  - name: after_hours_ratio_7d_avg
+    window: daily
+    tag: DIRECT
+    depends_on:
+      - after_hours_ratio
+      - historical_daily_rollups
+    null_rule: "null if fewer than 4 valid days with coverage_ratio >= 0.5"
+    implemented: false
+
+  - name: consecutive_after_hours_days
+    window: daily
+    tag: DIRECT
+    depends_on:
+      - after_hours_active_minutes
+      - after_hours_day_min
+      - historical_daily_rollups
+    null_rule: "0 if today after_hours_active_minutes < after_hours_day_min (never null)"
+    implemented: false
+
+  # ---------------------------------------------------------------------------
+  # External / Export Joins (Spec Section 8)
+  # ---------------------------------------------------------------------------
+  - name: total_msgs_sent
+    window: daily
+    tag: EXTERNAL
+    depends_on: []
+    null_rule: "always null on desktop agent (requires chat/email integration)"
+    implemented: false
+
+  - name: msgs_sent_after_hours
+    window: daily
+    tag: EXTERNAL
+    depends_on: []
+    null_rule: "always null on desktop agent (requires chat/email integration)"
+    implemented: false
+
+  - name: msgs_sent_late_night
+    window: daily
+    tag: EXTERNAL
+    depends_on: []
+    null_rule: "always null on desktop agent (requires chat/email integration)"
+    implemented: false
+
+  - name: first_msg_time
+    window: daily
+    tag: EXTERNAL
+    depends_on: []
+    null_rule: "always null on desktop agent (requires chat/email integration)"
+    implemented: false
+
+  - name: last_msg_time
+    window: daily
+    tag: EXTERNAL
+    depends_on: []
+    null_rule: "always null on desktop agent (requires chat/email integration)"
+    implemented: false
+
+  - name: profile
+    window: daily
+    tag: EXTERNAL
+    depends_on: []
+    null_rule: "joined at export time from device registration; not a computed metric"
+    implemented: false
+
+  - name: state
+    window: daily
+    tag: EXTERNAL
+    depends_on: []
+    null_rule: "joined at export time from self-report table; not computed on device"
+    implemented: false
