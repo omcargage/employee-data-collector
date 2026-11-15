@@ -19,8 +19,8 @@ class EDCConfig(BaseModel):
 
     # Time and environment settings
     timezone: str = Field(default="Asia/Kolkata", description="IANA timezone name")
-    logical_day_start: str = Field(default="07:00", description="Start time of logical day (HH:MM)")
-    logical_day_end: str = Field(default="19:00", description="End time of logical day (HH:MM)")
+    logical_day_start: str = Field(default="05:00", description="Start time of logical day (HH:MM)")
+    logical_day_end: str = Field(default="18:59", description="End time of logical day (HH:MM)")
 
     # Keyboard thresholds
     typing_gap_max_ms: int = Field(default=2000, description="Max pause within typing flow in ms")

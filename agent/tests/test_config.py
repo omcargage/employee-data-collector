@@ -10,8 +10,8 @@ def test_load_default_config():
     """Verify loading default_config.toml produces valid config matching spec."""
     cfg = load_config()
     assert cfg.timezone == "Asia/Kolkata"
-    assert cfg.logical_day_start == "07:00"
-    assert cfg.logical_day_end == "19:00"
+    assert cfg.logical_day_start == "05:00"
+    assert cfg.logical_day_end == "18:59"
     assert cfg.typing_gap_max_ms == 2000
     assert cfg.session_break_gap_s == 300
     assert cfg.break_max_s == 10800
@@ -42,7 +42,7 @@ def test_user_override_file(tmp_path: Path):
     assert cfg.min_keystrokes == 45
     # Non-overridden values remain default
     assert cfg.typing_gap_max_ms == 2000
-    assert cfg.logical_day_start == "07:00"
+    assert cfg.logical_day_start == "05:00"
 
 
 def test_per_person_runtime_overrides():
