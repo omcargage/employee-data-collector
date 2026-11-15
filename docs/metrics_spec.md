@@ -10,7 +10,7 @@ Feasibility tags: **DIRECT** (computed from input events), **PROXY** (indirect; 
 
 **Time**
 - All timestamps are stored in UTC. Local time is derived using the employee's configured IANA timezone (default `Asia/Kolkata`).
-- **Logical day:** a day runs from IST 7:00 AM to 06:59 PM (`logical_day = local_time - 5h`). This keeps a late-night session that crosses midnight inside one day. All `day`, `day_of_week` and daily rollups use the logical day.
+- **Logical day:** a day runs for 12 hours from IST 07:00 AM to 06:59 PM (18:59:59 IST) of the same day. All `day`, `day_of_week` and daily rollups use this logical day.
 - `day_of_week`: 0 = Monday ... 6 = Sunday. `is_weekend`: day_of_week in {5, 6}, unless overridden in the employee's config.
 
 **Windows**
@@ -20,7 +20,7 @@ Feasibility tags: **DIRECT** (computed from input events), **PROXY** (indirect; 
 
 **Gap types** (a gap = time between two consecutive input events)
 - `idle`: agent running, system awake, no input.
-- `away`: the OS reported lock, sleep or suspend during the gap. It is a legitimate break candidate.
+- `away`: the OS reported lock, sleep or suspend during the gap. Counts as a valid break when it falls between two sessions in the logical day and is <= `break_max_s`.
 - `unknown`: agent not running or crashed. This is **missing data**, never a break, never zero activity.
 
 **Null rule:** if a statistic lacks enough observations (thresholds in section 2), store `null`. Never store 0 as a stand-in for "not enough data".
@@ -110,14 +110,14 @@ Merging windows means adding counts and sums. Mean = sum/n. Sample standard devi
 **Additional columns beyond the original spec** (cheap to compute, relevant to "burst typing followed by long silences"):
 `n_bursts`, `mean_burst_len`, `n_long_silences_after_burst`, `burst_to_silence_ratio` (= `n_bursts / max(1, n_long_silences_after_burst)`).
 
-**Keystroke timing block**
+**Keystroke timing block (Unified Names)**
 
 | Column | Definition |
 |---|---|
-| `keystroke_count` | Same as `total_keystrokes` |
+| `total_keystrokes` | Total count of key events (unified canonical name; `keystroke_count` dropped as alias) |
 | `keystrokes_per_second` | `total_keystrokes / covered_s` |
-| `average_keystroke_interval_seconds` | `mean_flight_time_ms / 1000` (redundant by definition; kept for compatibility) |
-| `keystroke_interval_stdev_seconds` | `flight_time_std_ms / 1000` |
+| `mean_flight_time_ms` | Mean of flight times in ms (unified canonical name; `average_keystroke_interval_seconds` dropped as redundant alias) |
+| `flight_time_std_ms` | Sample std of flight times in ms (unified canonical name; `keystroke_interval_stdev_seconds` dropped as redundant alias) |
 | `keystroke_coefficient_of_variation` | `flight_time_std_ms / mean_flight_time_ms` |
 
 **Typing speed drift from baseline** is **not computed on the device.** It is derived in the ML pipeline as a z-score against the person's own rolling median and spread, so it always uses the latest baseline.
@@ -145,7 +145,7 @@ Merging windows means adding counts and sums. Mean = sum/n. Sample standard devi
 
 **Excluded:** click force / hard taps (EXCLUDED, not available through standard mouse APIs).
 
-**"Staring at the screen" (pointer idle while an app is open):** PROXY. The collector does not read window or app state. It reports `short_idle_total_s` = total of input gaps between `idle_threshold_s` and `session_break_gap_s`, meaning idle moments that did not end the session.
+**"Staring at the screen" (combined input idle):** PROXY. The collector does not read window or app state. It reports `short_idle_total_s` = total of combined keyboard AND mouse input silence gaps between `idle_threshold_s` and `session_break_gap_s`, meaning idle moments that did not end the session.
 
 ---
 
@@ -174,7 +174,7 @@ Merging windows means adding counts and sums. Mean = sum/n. Sample standard devi
 | `longest_lunch_break_mins` | Longest input gap overlapping `lunch_window`, clipped to the window; null if the window is mostly `unknown` | DIRECT |
 | `lunch_work_ratio` | `lunch_active_mins / lunch_window_minutes` | DIRECT |
 | `lunch_skipped_flag` | True if `longest_lunch_break_mins < no_lunch_break_min`. **Reports "no lunch break detected"**, not a fact about eating | PROXY |
-| `desk_dining_flag` | **Not reliably observable.** Recommendation: do not compute; keep the column as null, or replace with `lunch_continuous_activity_flag` (true if `lunch_work_ratio` > 0.5) | PROXY at best |
+| `desk_dining_flag` | Dropped per user decision (redundant with `lunch_skipped_flag`) | EXCLUDED |
 | `avg_focus_block_mins` | Mean focus-block duration; null if none | PROXY |
 | `max_focus_block_mins` | Longest focus block | PROXY |
 | `deep_work_blocks_count` | Number of deep-work blocks | PROXY |
@@ -210,17 +210,15 @@ Focus metrics are behavioural proxies. They show uninterrupted input, not concen
 
 ---
 
-## 9. Open decisions (please answer before implementation)
+## 9. Decisions and Resolutions
 
-1. **Logical day starts at 05:00.** Acceptable, or prefer midnight (simpler, but late-night sessions get split)?
-Answer:No, I  want the logical day to be  from IST 07:00 AM to 06:59 AM, you can convert these into your utc logical day timings and use these. 
-2. **`error_correction_efficiency`:** my definition is the fraction of typed characters surviving corrections. Is this what you intended?
-answer: Yes
-3. **Sleep/lock gaps count as breaks** when they fall between two sessions in a day. Alternatively treat all of them as missing.
-4. **`desk_dining_flag`:** drop it, or replace it with `lunch_continuous_activity_flag`?
-Answer: Can't we mke it as if there's no break of longer than 15 mins during the lunch hourds of 12 - 14:00, the user took no lunch break, and he was working through the lunch hours/break.
-5. **Default thresholds** (5-minute break, 10-minute stretch gap, 90-minute extended session, 2-second typing gap): keep them, or do you have domain references to adopt instead?
-Answer: No, these are fine.
-6. **Extra columns** (bursts, double clicks, scroll reversals, short idle time): keep them?
-Anwer: Please keep them, they might be useful.
+1. **Logical day boundary:** Runs for 12 hours from IST 07:00 AM to 06:59 PM (18:59:59 IST) of the same day.
+2. **`error_correction_efficiency`:** Fraction of typed characters surviving corrections: `max(0, char_keystrokes - total_correction_keys) / char_keystrokes`.
+3. **Sleep/lock gaps:** Count as valid breaks when falling between two sessions in the logical day and duration <= `break_max_s`.
+4. **`desk_dining_flag`:** Dropped (subsumed by `lunch_skipped_flag`).
+5. **Default thresholds:** Retained (5-minute break, 10-minute stretch gap, 90-minute extended session, 2-second typing gap).
+6. **Extra columns:** Retained (bursts, double clicks, scroll reversals, short idle time).
+7. **Keystroke timing column naming:** Unified canonical names used (`total_keystrokes`, `mean_flight_time_ms`, `flight_time_std_ms`, `keystroke_coefficient_of_variation`).
+8. **Short idle scope:** Combined keyboard AND mouse input silence.
+9. **Daily session aggregation:** Daily rollups compute directly from session/stretch runs tracked across the logical day in SQLite.
 

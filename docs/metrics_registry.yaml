@@ -245,10 +245,10 @@ metrics:
 
   - name: keystroke_count
     window: 15min
-    tag: DIRECT
+    tag: EXCLUDED
     depends_on:
       - total_keystrokes
-    null_rule: "0 if no key events (identical to total_keystrokes)"
+    null_rule: "excluded/dropped in favor of unified canonical name 'total_keystrokes'"
     implemented: false
 
   - name: keystrokes_per_second
@@ -262,18 +262,18 @@ metrics:
 
   - name: average_keystroke_interval_seconds
     window: 15min
-    tag: DIRECT
+    tag: EXCLUDED
     depends_on:
       - mean_flight_time_ms
-    null_rule: "null if mean_flight_time_ms is null (mean_flight_time_ms / 1000)"
+    null_rule: "excluded/dropped in favor of unified canonical name 'mean_flight_time_ms'"
     implemented: false
 
   - name: keystroke_interval_stdev_seconds
     window: 15min
-    tag: DIRECT
+    tag: EXCLUDED
     depends_on:
       - flight_time_std_ms
-    null_rule: "null if flight_time_std_ms is null (flight_time_std_ms / 1000)"
+    null_rule: "excluded/dropped in favor of unified canonical name 'flight_time_std_ms'"
     implemented: false
 
   - name: keystroke_coefficient_of_variation
@@ -432,10 +432,11 @@ metrics:
     window: 15min
     tag: PROXY
     depends_on:
-      - input_gaps
+      - keyboard_events
+      - mouse_events
       - idle_threshold_s
       - session_break_gap_s
-    null_rule: "0 if no qualifying short idle gaps (never null)"
+    null_rule: "0 if no combined keyboard and mouse silence gaps between 60s and 300s (never null)"
     implemented: false
 
   - name: click_force_hard_taps
@@ -579,11 +580,10 @@ metrics:
 
   - name: desk_dining_flag
     window: daily
-    tag: PROXY
+    tag: EXCLUDED
     depends_on:
-      - longest_lunch_break_mins
-      - lunch_work_ratio
-    null_rule: "null (unreliable behavioural proxy per spec section 6/9)"
+      - lunch_skipped_flag
+    null_rule: "excluded/dropped per user decision (redundant with lunch_skipped_flag)"
     implemented: false
 
   - name: avg_focus_block_mins

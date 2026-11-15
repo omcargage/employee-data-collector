@@ -4,6 +4,7 @@
 # Time and environment settings (Spec Section 1)
 timezone = "Asia/Kolkata"
 logical_day_start = "07:00"
+logical_day_end = "19:00"
 
 # Keyboard thresholds (Spec Section 2)
 typing_gap_max_ms = 2000
