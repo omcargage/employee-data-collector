@@ -4,6 +4,7 @@ Computes 15-minute and daily rollups (flight times, error bursts, session metric
 """
 from .keyboard_metrics import compute_keyboard_metrics
 from .mouse_metrics import compute_mouse_metrics
+from .session_metrics import ClassifiedGap, compute_session_metrics
 
 
 def compute_rollup_15min_metrics(blocks, *, covered_s=None, **kwargs):
@@ -21,4 +22,6 @@ __all__ = [
     "compute_keyboard_metrics",
     "compute_mouse_metrics",
     "compute_rollup_15min_metrics",
+    "compute_session_metrics",
+    "ClassifiedGap",
 ]

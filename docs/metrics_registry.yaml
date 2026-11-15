@@ -463,7 +463,7 @@ metrics:
     depends_on:
       - sessions
     null_rule: "null if no sessions >= min_session_s (default 120s)"
-    implemented: false
+    implemented: true
 
   - name: max_session_duration_mins
     window: daily
@@ -471,7 +471,7 @@ metrics:
     depends_on:
       - sessions
     null_rule: "null if no sessions >= min_session_s"
-    implemented: false
+    implemented: true
 
   - name: total_breaks_count
     window: daily
@@ -479,7 +479,7 @@ metrics:
     depends_on:
       - breaks
     null_rule: "0 if no breaks detected (never null)"
-    implemented: false
+    implemented: true
 
   - name: avg_break_duration_mins
     window: daily
@@ -487,7 +487,7 @@ metrics:
     depends_on:
       - breaks
     null_rule: "null if total_breaks_count == 0"
-    implemented: false
+    implemented: true
 
   - name: extended_sessions_count
     window: daily
@@ -496,7 +496,7 @@ metrics:
       - sessions
       - extended_session_min
     null_rule: "0 if no sessions (never null)"
-    implemented: false
+    implemented: true
 
   - name: longest_stretch_duration_mins
     window: daily
@@ -504,7 +504,7 @@ metrics:
     depends_on:
       - continuous_stretches
     null_rule: "null if no continuous stretches detected"
-    implemented: false
+    implemented: true
 
   - name: stretch_start_hour
     window: daily
@@ -513,7 +513,7 @@ metrics:
       - continuous_stretches
       - timezone
     null_rule: "null if no continuous stretches detected"
-    implemented: false
+    implemented: true
 
   - name: post_stretch_break_mins
     window: daily
@@ -522,7 +522,7 @@ metrics:
       - continuous_stretches
       - input_gaps
     null_rule: "null if no stretches or if logical day ended immediately after stretch"
-    implemented: false
+    implemented: true
 
   - name: stretch_intensity_pct
     window: daily
@@ -531,7 +531,7 @@ metrics:
       - continuous_stretches
       - active_minutes
     null_rule: "null if longest_stretch_duration_mins is null or 0"
-    implemented: false
+    implemented: true
 
   - name: stretch_to_total_work_ratio
     window: daily
@@ -540,7 +540,7 @@ metrics:
       - longest_stretch_duration_mins
       - total_work_minutes
     null_rule: "null if total_work_minutes == 0"
-    implemented: false
+    implemented: true
 
   - name: lunch_active_mins
     window: daily
@@ -549,7 +549,7 @@ metrics:
       - active_minutes
       - lunch_window
     null_rule: "0 if no activity in lunch window (never null)"
-    implemented: false
+    implemented: true
 
   - name: longest_lunch_break_mins
     window: daily
@@ -558,7 +558,7 @@ metrics:
       - input_gaps
       - lunch_window
     null_rule: "null if lunch window is mostly unknown gaps"
-    implemented: false
+    implemented: true
 
   - name: lunch_work_ratio
     window: daily
@@ -567,7 +567,7 @@ metrics:
       - lunch_active_mins
       - lunch_window
     null_rule: "null if lunch window duration is 0"
-    implemented: false
+    implemented: true
 
   - name: lunch_skipped_flag
     window: daily
@@ -576,7 +576,7 @@ metrics:
       - longest_lunch_break_mins
       - no_lunch_break_min
     null_rule: "null if longest_lunch_break_mins is null"
-    implemented: false
+    implemented: true
 
   - name: desk_dining_flag
     window: daily
@@ -592,7 +592,7 @@ metrics:
     depends_on:
       - focus_blocks
     null_rule: "null if no focus blocks detected"
-    implemented: false
+    implemented: true
 
   - name: max_focus_block_mins
     window: daily
@@ -600,7 +600,7 @@ metrics:
     depends_on:
       - focus_blocks
     null_rule: "null if no focus blocks detected"
-    implemented: false
+    implemented: true
 
   - name: deep_work_blocks_count
     window: daily
@@ -609,7 +609,7 @@ metrics:
       - focus_blocks
       - deep_work_min
     null_rule: "0 if no deep work blocks detected (never null)"
-    implemented: false
+    implemented: true
 
   - name: total_focus_time_hours
     window: daily
@@ -617,7 +617,7 @@ metrics:
     depends_on:
       - focus_blocks
     null_rule: "0 if no focus blocks detected (never null)"
-    implemented: false
+    implemented: true
 
   - name: focus_fragmentation_ratio
     window: daily
@@ -626,7 +626,7 @@ metrics:
       - total_focus_time_hours
       - total_work_minutes
     null_rule: "null if total_work_minutes == 0"
-    implemented: false
+    implemented: true
 
   # ---------------------------------------------------------------------------
   # Work-Hours and After-Hours Metrics: Daily (Spec Section 7)
