@@ -152,7 +152,7 @@ def test_held_key_auto_repeat_rules():
 def test_mouse_events_coalesce_and_click_rules():
     """Verify mouse moves are coalesced, clicks emit on button-down, and scrolls are signed."""
     emitted: List[ActivityEvent] = []
-    provider = WindowsInputProvider(callback=emitted.append, mouse_bin_ms=50)
+    provider = WindowsInputProvider(callback=emitted.append, mouse_bin_ms=20)
 
     # 1. Mouse move coalescing: 10 moves within 10ms -> only 1 event emitted
     for i in range(10):
@@ -162,8 +162,8 @@ def test_mouse_events_coalesce_and_click_rules():
     assert emitted[0].x == 100.0
     assert emitted[0].y == 200.0
 
-    # Move after coalesce interval expires
-    time.sleep(0.06)
+    # Move after coalesce interval expires (20ms)
+    time.sleep(0.08)
     provider._on_move(350.0, 450.0)
     assert len(emitted) == 2
     assert emitted[1].x == 350.0

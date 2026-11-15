@@ -106,8 +106,8 @@ class Database:
         self._memory_conn: Optional[sqlite3.Connection] = None
 
         if self._is_memory:
-            # Keep a persistent connection for in-memory databases
-            self._memory_conn = sqlite3.connect(":memory:")
+            # Keep a persistent connection for in-memory databases (thread-safe for testing)
+            self._memory_conn = sqlite3.connect(":memory:", check_same_thread=False)
             self._memory_conn.row_factory = sqlite3.Row
             self._configure_connection(self._memory_conn)
             self.run_migrations(self._memory_conn)
