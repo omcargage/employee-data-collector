@@ -239,6 +239,59 @@ class Database:
             return None
         return RollupDaily.model_validate_json(row["payload"])
 
+    def check_rollup_15min_exists(self, window_start: str, window_end: str) -> bool:
+        """Check if a 15-minute rollup already exists for given bounds."""
+        conn = self.get_connection()
+        cur = conn.execute(
+            "SELECT 1 FROM rollups_15min WHERE window_start = ? AND window_end = ? LIMIT 1;",
+            (window_start, window_end),
+        )
+        return cur.fetchone() is not None
+
+    def get_rollups_15min_count(self) -> int:
+        """Return total count of 15-minute rollups stored."""
+        conn = self.get_connection()
+        cur = conn.execute("SELECT COUNT(*) FROM rollups_15min;")
+        row = cur.fetchone()
+        return row[0] if row else 0
+
+    def get_rollups_daily_count(self) -> int:
+        """Return total count of daily rollups stored."""
+        conn = self.get_connection()
+        cur = conn.execute("SELECT COUNT(*) FROM rollups_daily;")
+        row = cur.fetchone()
+        return row[0] if row else 0
+
+    def get_recent_rollups_daily(self, limit: int = 7) -> List[RollupDaily]:
+        """Fetch up to `limit` recent RollupDaily objects ordered by logical_day descending."""
+        conn = self.get_connection()
+        cur = conn.execute(
+            "SELECT payload FROM rollups_daily ORDER BY logical_day DESC LIMIT ?;",
+            (limit,),
+        )
+        return [RollupDaily.model_validate_json(row["payload"]) for row in cur.fetchall()]
+
+    def get_agent_state(self, key: str) -> Optional[str]:
+        """Fetch a value from the agent_state key-value store."""
+        conn = self.get_connection()
+        cur = conn.execute("SELECT value FROM agent_state WHERE key = ?;", (key,))
+        row = cur.fetchone()
+        return row["value"] if row else None
+
+    def set_agent_state(self, key: str, value: str) -> None:
+        """Store or update a key-value pair in agent_state."""
+        conn = self.get_connection()
+        query = """
+        INSERT OR REPLACE INTO agent_state (key, value, updated_at)
+        VALUES (?, ?, datetime('now', 'utc'));
+        """
+        if self._is_memory:
+            conn.execute(query, (key, value))
+            conn.commit()
+        else:
+            with conn:
+                conn.execute(query, (key, value))
+
     def list_tables(self) -> List[str]:
         """Return all user table names created in the database."""
         conn = self.get_connection()

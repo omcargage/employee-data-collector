@@ -48,11 +48,28 @@ class ActivityCollector:
         self._queue: deque[ActivityEvent] = deque()
         self._condition = threading.Condition()
         self._is_running = False
+        self._is_paused = False
         self._worker_thread: Optional[threading.Thread] = None
 
         self._dropped_events_count = 0
         self._accumulators_lock = threading.Lock()
         self._accumulators: Dict[Tuple[datetime, datetime], WindowAccumulator] = {}
+
+    @property
+    def is_paused(self) -> bool:
+        """Return whether collector is in paused state."""
+        with self._condition:
+            return self._is_paused
+
+    def pause(self) -> None:
+        """Pause collection; incoming hook events are dropped while paused."""
+        with self._condition:
+            self._is_paused = True
+
+    def resume(self) -> None:
+        """Resume collection; incoming hook events are accepted again."""
+        with self._condition:
+            self._is_paused = False
 
     @property
     def dropped_events_count(self) -> int:
@@ -69,6 +86,8 @@ class ActivityCollector:
     def on_event(self, event: ActivityEvent) -> None:
         """Hook callback. Non-blocking enqueue with drop-oldest policy if queue is full."""
         with self._condition:
+            if self._is_paused:
+                return
             if len(self._queue) >= self.max_queue_size:
                 self._queue.popleft()
                 self._dropped_events_count += 1
@@ -137,6 +156,11 @@ class ActivityCollector:
         """Fetch window accumulator for given (start_utc, end_utc) bounds."""
         with self._accumulators_lock:
             return self._accumulators.get(bounds)
+
+    def pop_accumulator(self, bounds: Tuple[datetime, datetime]) -> Optional[WindowAccumulator]:
+        """Remove and return the window accumulator, discarding raw events from active tracking."""
+        with self._accumulators_lock:
+            return self._accumulators.pop(bounds, None)
 
     def get_all_accumulators(self) -> Dict[Tuple[datetime, datetime], WindowAccumulator]:
         """Return shallow copy of all registered window accumulators."""
