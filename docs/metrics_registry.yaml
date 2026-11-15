@@ -79,7 +79,7 @@ metrics:
       - n_delete
       - n_other_key
     null_rule: "0 if no key events (never null)"
-    implemented: false
+    implemented: true
 
   - name: char_keystrokes
     window: 15min
@@ -87,7 +87,7 @@ metrics:
     depends_on:
       - n_char
     null_rule: "0 if no char events (never null)"
-    implemented: false
+    implemented: true
 
   - name: backspace_count
     window: 15min
@@ -95,7 +95,7 @@ metrics:
     depends_on:
       - n_backspace
     null_rule: "0 if no backspace events (never null)"
-    implemented: false
+    implemented: true
 
   - name: delete_count
     window: 15min
@@ -103,7 +103,7 @@ metrics:
     depends_on:
       - n_delete
     null_rule: "0 if no delete events (never null)"
-    implemented: false
+    implemented: true
 
   - name: total_correction_keys
     window: 15min
@@ -112,7 +112,7 @@ metrics:
       - backspace_count
       - delete_count
     null_rule: "0 if no correction keys (never null)"
-    implemented: false
+    implemented: true
 
   - name: repeated_backspace_bursts
     window: 15min
@@ -120,7 +120,7 @@ metrics:
     depends_on:
       - n_backspace_bursts
     null_rule: "0 if no backspace bursts (never null)"
-    implemented: false
+    implemented: true
 
   - name: mean_flight_time_ms
     window: 15min
@@ -129,7 +129,7 @@ metrics:
       - flight_times.sum
       - flight_times.n
     null_rule: "null if n < min_flight_intervals (default 10)"
-    implemented: false
+    implemented: true
 
   - name: flight_time_std_ms
     window: 15min
@@ -139,7 +139,7 @@ metrics:
       - flight_times.sum_sq
       - flight_times.n
     null_rule: "null if n < min_flight_intervals (default 10)"
-    implemented: false
+    implemented: true
 
   - name: active_typing_ratio
     window: 15min
@@ -148,7 +148,7 @@ metrics:
       - active_typing_s
       - covered_s
     null_rule: "null if covered_s == 0"
-    implemented: false
+    implemented: true
 
   - name: gross_wpm
     window: 15min
@@ -158,7 +158,7 @@ metrics:
       - active_typing_s
       - total_keystrokes
     null_rule: "null if total_keystrokes < min_keystrokes (default 30) or active_typing_s == 0"
-    implemented: false
+    implemented: true
 
   - name: net_wpm
     window: 15min
@@ -169,7 +169,7 @@ metrics:
       - active_typing_s
       - total_keystrokes
     null_rule: "null if total_keystrokes < min_keystrokes (default 30) or active_typing_s == 0"
-    implemented: false
+    implemented: true
 
   - name: backspace_ratio
     window: 15min
@@ -178,7 +178,7 @@ metrics:
       - backspace_count
       - total_keystrokes
     null_rule: "null if total_keystrokes < min_keystrokes (default 30)"
-    implemented: false
+    implemented: true
 
   - name: correction_ratio
     window: 15min
@@ -187,7 +187,7 @@ metrics:
       - total_correction_keys
       - total_keystrokes
     null_rule: "null if total_keystrokes < min_keystrokes (default 30)"
-    implemented: false
+    implemented: true
 
   - name: error_correction_efficiency
     window: 15min
@@ -197,7 +197,7 @@ metrics:
       - total_correction_keys
       - total_keystrokes
     null_rule: "null if char_keystrokes == 0 or total_keystrokes < min_keystrokes (default 30)"
-    implemented: false
+    implemented: true
 
   - name: pause_before_correction_ms
     window: 15min
@@ -206,7 +206,7 @@ metrics:
       - sum_pause_before_correction_ms
       - n_correction_runs
     null_rule: "null if n_correction_runs == 0"
-    implemented: false
+    implemented: true
 
   - name: n_bursts
     window: 15min
@@ -214,7 +214,7 @@ metrics:
     depends_on:
       - bursts
     null_rule: "0 if no bursts (never null)"
-    implemented: false
+    implemented: true
 
   - name: mean_burst_len
     window: 15min
@@ -223,7 +223,7 @@ metrics:
       - sum_burst_len
       - n_bursts
     null_rule: "null if n_bursts == 0"
-    implemented: false
+    implemented: true
 
   - name: n_long_silences_after_burst
     window: 15min
@@ -232,7 +232,7 @@ metrics:
       - bursts
       - long_silence_s
     null_rule: "0 if no bursts (never null)"
-    implemented: false
+    implemented: true
 
   - name: burst_to_silence_ratio
     window: 15min
@@ -241,7 +241,7 @@ metrics:
       - n_bursts
       - n_long_silences_after_burst
     null_rule: "null if n_bursts == 0"
-    implemented: false
+    implemented: true
 
   - name: keystroke_count
     window: 15min
@@ -258,7 +258,7 @@ metrics:
       - total_keystrokes
       - covered_s
     null_rule: "null if covered_s == 0"
-    implemented: false
+    implemented: true
 
   - name: average_keystroke_interval_seconds
     window: 15min
@@ -283,7 +283,7 @@ metrics:
       - flight_time_std_ms
       - mean_flight_time_ms
     null_rule: "null if flight_time_std_ms is null or mean_flight_time_ms == 0"
-    implemented: false
+    implemented: true
 
   - name: mean_dwell_time_ms
     window: 15min
@@ -292,7 +292,7 @@ metrics:
       - dwell.sum
       - dwell.n
     null_rule: "null if key_dwell capability unavailable or n == 0"
-    implemented: false
+    implemented: true
 
   - name: dwell_time_std_ms
     window: 15min
@@ -302,7 +302,7 @@ metrics:
       - dwell.sum_sq
       - dwell.n
     null_rule: "null if key_dwell capability unavailable or n < 2"
-    implemented: false
+    implemented: true
 
   # ---------------------------------------------------------------------------
   # Mouse Metrics: 15-Minute Window (Spec Section 5)
@@ -321,7 +321,7 @@ metrics:
     depends_on:
       - n_clicks
     null_rule: "0 if no clicks (never null)"
-    implemented: false
+    implemented: true
 
   - name: clicks_per_second
     window: 15min
@@ -330,7 +330,7 @@ metrics:
       - click_count
       - covered_s
     null_rule: "null if covered_s == 0"
-    implemented: false
+    implemented: true
 
   - name: average_interval_seconds
     window: 15min
@@ -339,7 +339,7 @@ metrics:
       - click_intervals.sum
       - click_intervals.n
     null_rule: "null if n < min_clicks (default 5)"
-    implemented: false
+    implemented: true
 
   - name: click_interval_stdev_seconds
     window: 15min
@@ -349,7 +349,7 @@ metrics:
       - click_intervals.sum_sq
       - click_intervals.n
     null_rule: "null if n < min_clicks (default 5)"
-    implemented: false
+    implemented: true
 
   - name: coefficient_of_variation
     window: 15min
@@ -358,7 +358,7 @@ metrics:
       - click_interval_stdev_seconds
       - average_interval_seconds
     null_rule: "null if n < min_clicks (default 5) or average_interval_seconds == 0"
-    implemented: false
+    implemented: true
 
   - name: average_speed_px_s
     window: 15min
@@ -367,7 +367,7 @@ metrics:
       - sum_speed
       - n_moving_bins
     null_rule: "null if n_moving_bins == 0"
-    implemented: false
+    implemented: true
 
   - name: average_abs_accel_px_s2
     window: 15min
@@ -376,7 +376,7 @@ metrics:
       - sum_abs_accel
       - n_accel_samples
     null_rule: "null if n_accel_samples == 0"
-    implemented: false
+    implemented: true
 
   - name: total_abs_scroll_ticks
     window: 15min
@@ -384,7 +384,7 @@ metrics:
     depends_on:
       - n_scroll_ticks_abs
     null_rule: "0 if no scroll events (never null)"
-    implemented: false
+    implemented: true
 
   - name: average_abs_scroll_ticks_s
     window: 15min
@@ -393,7 +393,7 @@ metrics:
       - total_abs_scroll_ticks
       - covered_s
     null_rule: "null if covered_s == 0"
-    implemented: false
+    implemented: true
 
   - name: double_click_count
     window: 15min
@@ -401,7 +401,7 @@ metrics:
     depends_on:
       - n_double_clicks
     null_rule: "0 if no double clicks (never null)"
-    implemented: false
+    implemented: true
 
   - name: rapid_click_runs
     window: 15min
@@ -409,7 +409,7 @@ metrics:
     depends_on:
       - n_rapid_click_runs
     null_rule: "0 if no rapid click runs (never null)"
-    implemented: false
+    implemented: true
 
   - name: scroll_reversal_count
     window: 15min
@@ -417,7 +417,7 @@ metrics:
     depends_on:
       - n_scroll_reversals
     null_rule: "0 if no reversals (never null)"
-    implemented: false
+    implemented: true
 
   - name: pointer_idle_s
     window: 15min
@@ -426,7 +426,7 @@ metrics:
       - mouse_events
       - covered_s
     null_rule: "null if covered_s == 0"
-    implemented: false
+    implemented: true
 
   - name: short_idle_total_s
     window: 15min
@@ -437,7 +437,7 @@ metrics:
       - idle_threshold_s
       - session_break_gap_s
     null_rule: "0 if no combined keyboard and mouse silence gaps between 60s and 300s (never null)"
-    implemented: false
+    implemented: true
 
   - name: click_force_hard_taps
     window: 15min
