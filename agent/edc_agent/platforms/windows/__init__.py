@@ -2,3 +2,6 @@
 
 Uses Windows API / pynput hooks to provide raw input events adhering to the privacy contract.
 """
+from .provider import WindowsInputProvider
+
+__all__ = ["WindowsInputProvider"]
