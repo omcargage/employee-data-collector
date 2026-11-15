@@ -264,6 +264,12 @@ class AgentLifecycle:
                 )
                 self.db.insert_rollup_15min(interrupted_rollup)
                 self.closed_windows_count += 1
+                self.db.insert_gap_log(
+                    start_ts=prev_start,
+                    end_ts=now,
+                    duration_s=(now - prev_start).total_seconds(),
+                    gap_type="unknown",
+                )
                 logger.info("Recorded interrupted window [%s, %s] as low coverage.", prev_start_str, prev_end_str)
 
     def pause(self) -> None:
@@ -411,6 +417,7 @@ class AgentLifecycle:
         self.db.insert_rollup_15min(rollup)
         self.closed_windows_count += 1
         self.db.set_agent_state("last_closed_window_end", end_iso)
+        self.db.set_dropped_events_count(self.collector.dropped_events_count)
         logger.info("Stored Rollup15Min for [%s, %s] (coverage=%.2f)", start_iso, end_iso, cov_ratio)
         return rollup
 
@@ -454,6 +461,9 @@ class AgentLifecycle:
         )
 
         self.db.insert_rollup_daily(rollup_daily)
+        for gap in self.day_classified_gaps:
+            gap_type_str = gap.gap_type.value if hasattr(gap.gap_type, "value") else str(gap.gap_type)
+            self.db.insert_gap_log(gap.start_utc, gap.end_utc, gap.duration_s, gap_type_str)
         self.day_events.clear()
         self.day_classified_gaps.clear()
         self.day_coverage_tracker = CoverageTracker()
@@ -483,6 +493,7 @@ class AgentLifecycle:
 
             self.collector.stop(drain=True)
             self.heartbeat_manager.stop()
+            self.db.set_dropped_events_count(self.collector.dropped_events_count)
 
             now_iso = datetime.now(timezone.utc).isoformat()
             self.db.set_agent_state("status", "stopped")

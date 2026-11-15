@@ -113,6 +113,8 @@ class WindowsInputProvider(InputProvider):
             return EventKind.KEY_DELETE
         if key in MODIFIER_KEYS:
             return EventKind.KEY_MODIFIER
+        if key == Key.space:
+            return EventKind.KEY_CHAR
         if hasattr(key, "char") and key.char is not None:
             return EventKind.KEY_CHAR
         return EventKind.KEY_OTHER

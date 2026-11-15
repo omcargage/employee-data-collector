@@ -340,6 +340,64 @@ class Database:
         cur = conn.execute("SELECT payload FROM rollups_daily ORDER BY logical_day ASC;")
         return [RollupDaily.model_validate_json(row["payload"]) for row in cur.fetchall()]
 
+    def insert_gap_log(
+        self,
+        start_ts: Union[str, datetime],
+        end_ts: Union[str, datetime],
+        duration_s: float,
+        gap_type: str,
+    ) -> int:
+        """Record an idle, away, or unknown gap interval in gap_log."""
+        s_iso = start_ts.isoformat() if isinstance(start_ts, datetime) else str(start_ts)
+        e_iso = end_ts.isoformat() if isinstance(end_ts, datetime) else str(end_ts)
+        conn = self.get_connection()
+        query = """
+        INSERT INTO gap_log (start_ts, end_ts, duration_s, gap_type)
+        VALUES (?, ?, ?, ?);
+        """
+        params = (s_iso, e_iso, float(duration_s), gap_type)
+        if self._is_memory:
+            cur = conn.execute(query, params)
+            conn.commit()
+            return cur.lastrowid  # type: ignore[return-value]
+        with conn:
+            cur = conn.execute(query, params)
+            return cur.lastrowid  # type: ignore[return-value]
+
+    def get_gap_logs(self, gap_type: Optional[str] = None) -> List[sqlite3.Row]:
+        """Fetch all logged gaps, optionally filtered by gap_type."""
+        conn = self.get_connection()
+        if gap_type:
+            cur = conn.execute(
+                "SELECT * FROM gap_log WHERE gap_type = ? ORDER BY start_ts ASC;",
+                (gap_type,),
+            )
+        else:
+            cur = conn.execute("SELECT * FROM gap_log ORDER BY start_ts ASC;")
+        return cur.fetchall()
+
+    def count_gap_logs(self, gap_type: Optional[str] = None) -> int:
+        """Return total count of gaps logged, optionally filtered by gap_type."""
+        conn = self.get_connection()
+        if gap_type:
+            cur = conn.execute(
+                "SELECT COUNT(*) FROM gap_log WHERE gap_type = ?;",
+                (gap_type,),
+            )
+        else:
+            cur = conn.execute("SELECT COUNT(*) FROM gap_log;")
+        row = cur.fetchone()
+        return row[0] if row else 0
+
+    def get_dropped_events_count(self) -> int:
+        """Fetch cumulative dropped events count from agent_state."""
+        val = self.get_agent_state("dropped_events_count")
+        return int(val) if val is not None else 0
+
+    def set_dropped_events_count(self, count: int) -> None:
+        """Persist cumulative dropped events count to agent_state."""
+        self.set_agent_state("dropped_events_count", str(count))
+
     def clear_all_data(self) -> None:
         """Wipe all user data tables and state (delete-all-data)."""
         tables = [

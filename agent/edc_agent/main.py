@@ -16,19 +16,14 @@ import time
 
 from edc_agent.config import load_config
 from edc_agent.lifecycle import AgentLifecycle
+from edc_agent.logging_config import setup_logging
 from edc_agent.privacy.consent import has_consent, prompt_for_consent, record_consent
 from edc_agent.privacy.delete import delete_all_data
 from edc_agent.privacy.export import export_data_to_csv
 from edc_agent.privacy.self_report import prompt_checkin, record_checkin
 from edc_agent.storage.database import Database
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stderr),
-    ],
-)
+setup_logging()
 logger = logging.getLogger("edc_agent.main")
 
 
