@@ -48,6 +48,7 @@ class WindowBlocks(BaseModel):
     sum_speed_px_s: float = Field(default=0.0, description="Sum of speed samples in px/s")
     n_accel_samples: int = Field(default=0, description="Number of acceleration samples across bins")
     sum_abs_accel_px_s2: float = Field(default=0.0, description="Sum of absolute acceleration in px/s^2")
+    display_scale: float = Field(default=1.0, description="Display scale factor recorded alongside pointer speed")
 
     # Time counters
     covered_s: float = Field(default=0.0, description="Seconds agent was active and listening")
@@ -74,9 +75,12 @@ class WindowBlocks(BaseModel):
         """Merge two WindowBlocks by summing all additive counts, sums, and histogram bins."""
         merged_data = {}
         for field_name in self.__class__.model_fields:
-            val_self = getattr(self, field_name)
-            val_other = getattr(other, field_name)
-            merged_data[field_name] = val_self + val_other
+            if field_name == "display_scale":
+                merged_data[field_name] = other.display_scale if other.display_scale != 1.0 else self.display_scale
+            else:
+                val_self = getattr(self, field_name)
+                val_other = getattr(other, field_name)
+                merged_data[field_name] = val_self + val_other
         return WindowBlocks(**merged_data)
 
     def __add__(self, other: "WindowBlocks") -> "WindowBlocks":
