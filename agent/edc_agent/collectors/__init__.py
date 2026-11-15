@@ -2,3 +2,6 @@
 
 Gathers keyboard, mouse, and system activity events in-memory using platform input providers.
 """
+from .activity_collector import ActivityCollector, WindowAccumulator
+
+__all__ = ["ActivityCollector", "WindowAccumulator"]
