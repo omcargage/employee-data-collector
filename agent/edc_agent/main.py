@@ -1,7 +1,8 @@
 """Main entry point and CLI commands for the Employee Data Collector (EDC) desktop agent.
 
-Supports running the foreground collection loop, pausing and resuming via `edc pause` / `edc resume`,
-checking status, and graceful shutdown on Ctrl+C.
+Supports running foreground collection, pausing/resuming, checking status,
+privacy notice consent, voluntary daily check-ins, registry-compliant CSV export,
+and full data deletion upon confirmation.
 """
 from datetime import datetime, timezone
 from pathlib import Path
@@ -15,6 +16,10 @@ import time
 
 from edc_agent.config import load_config
 from edc_agent.lifecycle import AgentLifecycle
+from edc_agent.privacy.consent import has_consent, prompt_for_consent, record_consent
+from edc_agent.privacy.delete import delete_all_data
+from edc_agent.privacy.export import export_data_to_csv
+from edc_agent.privacy.self_report import prompt_checkin, record_checkin
 from edc_agent.storage.database import Database
 
 logging.basicConfig(
@@ -38,15 +43,27 @@ def run_agent(
     config_path: Optional[str] = None,
     db_path: Optional[str] = None,
     window_minutes: int = 15,
+    auto_consent: bool = False,
 ) -> int:
     """Run the EDC agent in the foreground with live status line until interrupted."""
     cfg = load_config(override_path=config_path)
     database_path = Path(db_path) if db_path else get_default_db_path()
 
+    db = Database(database_path)
+
+    # Consent check: No collection before acknowledgement!
+    if not has_consent(db):
+        sys.stdout.write("[EDC] Privacy disclosure notice has not been acknowledged.\n")
+        accepted = prompt_for_consent(db, auto_ack=auto_consent)
+        if not accepted:
+            sys.stderr.write("[EDC ERROR] Collection aborted: user consent was declined.\n")
+            return 1
+
     lifecycle = AgentLifecycle(
         config=cfg,
         window_minutes=window_minutes,
-        db_path=database_path,
+        db=db,
+        require_consent=True,
     )
 
     stop_event = threading.Event()
@@ -125,14 +142,72 @@ def cmd_status(db_path: Optional[str] = None) -> int:
     last_shutdown = db.get_agent_state("last_shutdown")
     win_count = db.get_rollups_15min_count()
     daily_count = db.get_rollups_daily_count()
+    consent = has_consent(db)
 
     sys.stdout.write(f"[EDC STATUS: {status.upper()}]\n")
+    sys.stdout.write(f"  Consent Status: {'Consented' if consent else 'Not Consented'}\n")
     if active_start and active_end:
         sys.stdout.write(f"  Current Window: {active_start} to {active_end}\n")
     if last_shutdown:
         sys.stdout.write(f"  Last Shutdown:  {last_shutdown}\n")
     sys.stdout.write(f"  Stored Rollups: {win_count} 15-min windows, {daily_count} daily rollups\n")
     return 0
+
+
+def cmd_consent(db_path: Optional[str] = None, auto_ack: bool = False) -> int:
+    """Show the plain-language privacy notice and record acknowledgement."""
+    database_path = Path(db_path) if db_path else get_default_db_path()
+    db = Database(database_path)
+    accepted = prompt_for_consent(db, auto_ack=auto_ack)
+    return 0 if accepted else 1
+
+
+def cmd_checkin(
+    db_path: Optional[str] = None,
+    stress: Optional[int] = None,
+    energy: Optional[int] = None,
+    workload: Optional[int] = None,
+    skip: bool = False,
+) -> int:
+    """Run the voluntary end-of-day check-in (1-5 Likert scales)."""
+    database_path = Path(db_path) if db_path else get_default_db_path()
+    db = Database(database_path)
+
+    ratings = (stress, energy, workload) if (stress and energy and workload) else None
+    prompt_checkin(db, ratings=ratings, skip=skip)
+    return 0
+
+
+def cmd_export_data(
+    db_path: Optional[str] = None,
+    output_dir: Optional[str] = None,
+    prefix: str = "edc_export",
+) -> int:
+    """Export 15-minute and daily rollups joined with self-report labels to CSV."""
+    database_path = Path(db_path) if db_path else get_default_db_path()
+    if not database_path.exists():
+        sys.stderr.write(f"[EDC ERROR] Database not found at {database_path}.\n")
+        return 1
+
+    db = Database(database_path)
+    out_dir = Path(output_dir) if output_dir else Path(".")
+    f_15min, f_daily = export_data_to_csv(db, output_dir=out_dir, prefix=prefix)
+
+    sys.stdout.write(f"[EDC] Exported 15-minute features to: {f_15min.resolve()}\n")
+    sys.stdout.write(f"[EDC] Exported daily features to:     {f_daily.resolve()}\n")
+    return 0
+
+
+def cmd_delete_all_data(db_path: Optional[str] = None, confirmed: bool = False) -> int:
+    """Permanently wipe all local data from SQLite upon confirmation."""
+    database_path = Path(db_path) if db_path else get_default_db_path()
+    if not database_path.exists():
+        sys.stdout.write("[EDC] Database does not exist. Nothing to delete.\n")
+        return 0
+
+    db = Database(database_path)
+    deleted = delete_all_data(db, confirmed=confirmed)
+    return 0 if deleted else 1
 
 
 def main() -> int:
@@ -153,6 +228,11 @@ def main() -> int:
         default=15,
         help="Window duration in minutes (default: 15)",
     )
+    run_parser.add_argument(
+        "--auto-consent",
+        action="store_true",
+        help="Automatically acknowledge privacy notice (non-interactive mode)",
+    )
 
     # pause command
     pause_parser = subparsers.add_parser("pause", help="Pause data collection on running agent")
@@ -166,6 +246,30 @@ def main() -> int:
     status_parser = subparsers.add_parser("status", help="Inspect agent status in SQLite")
     status_parser.add_argument("--db", help="Path to SQLite database file")
 
+    # consent command
+    consent_parser = subparsers.add_parser("consent", help="Show privacy notice and acknowledge consent")
+    consent_parser.add_argument("--db", help="Path to SQLite database file")
+    consent_parser.add_argument("--yes", "-y", action="store_true", help="Acknowledge notice automatically")
+
+    # check-in command
+    checkin_parser = subparsers.add_parser("check-in", help="Submit end-of-day stress/energy/workload check-in")
+    checkin_parser.add_argument("--db", help="Path to SQLite database file")
+    checkin_parser.add_argument("--stress", type=int, choices=[1, 2, 3, 4, 5], help="Stress level (1-5)")
+    checkin_parser.add_argument("--energy", type=int, choices=[1, 2, 3, 4, 5], help="Energy level (1-5)")
+    checkin_parser.add_argument("--workload", type=int, choices=[1, 2, 3, 4, 5], help="Workload level (1-5)")
+    checkin_parser.add_argument("--skip", action="store_true", help="Skip check-in without recording")
+
+    # export-data command
+    export_parser = subparsers.add_parser("export-data", help="Export features joined with labels to CSV")
+    export_parser.add_argument("--db", help="Path to SQLite database file")
+    export_parser.add_argument("--output-dir", "-o", default=".", help="Directory to save CSV files")
+    export_parser.add_argument("--prefix", default="edc_export", help="CSV filename prefix")
+
+    # delete-all-data command
+    delete_parser = subparsers.add_parser("delete-all-data", help="Permanently delete all local data")
+    delete_parser.add_argument("--db", help="Path to SQLite database file")
+    delete_parser.add_argument("--yes", "-y", action="store_true", help="Confirm deletion non-interactively")
+
     args, unknown = parser.parse_known_args()
 
     # Default to 'run' if no subcommand specified
@@ -176,6 +280,7 @@ def main() -> int:
             config_path=args.config,
             db_path=args.db,
             window_minutes=args.window_minutes,
+            auto_consent=getattr(args, "auto_consent", False),
         )
     elif args.subcommand == "pause":
         return cmd_pause(db_path=args.db)
@@ -183,6 +288,27 @@ def main() -> int:
         return cmd_resume(db_path=args.db)
     elif args.subcommand == "status":
         return cmd_status(db_path=args.db)
+    elif args.subcommand == "consent":
+        return cmd_consent(db_path=args.db, auto_ack=getattr(args, "yes", False))
+    elif args.subcommand == "check-in":
+        return cmd_checkin(
+            db_path=args.db,
+            stress=args.stress,
+            energy=args.energy,
+            workload=args.workload,
+            skip=args.skip,
+        )
+    elif args.subcommand == "export-data":
+        return cmd_export_data(
+            db_path=args.db,
+            output_dir=args.output_dir,
+            prefix=args.prefix,
+        )
+    elif args.subcommand == "delete-all-data":
+        return cmd_delete_all_data(
+            db_path=args.db,
+            confirmed=getattr(args, "yes", False),
+        )
 
     parser.print_help()
     return 0

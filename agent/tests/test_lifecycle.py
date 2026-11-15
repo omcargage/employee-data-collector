@@ -67,6 +67,7 @@ def test_workday_simulation_produces_15min_and_daily_rollups_and_discards_raw_ev
         db=db,
         provider=provider,
         window_minutes=15,
+        require_consent=False,
     )
     provider.callback = lifecycle.on_event
 
@@ -153,7 +154,7 @@ def test_restart_recovery_marks_interrupted_window_low_coverage_and_prevents_dou
 
     # Agent restarts at 10:20 (after window 10:00-10:15 has already elapsed)
     provider = FakeInputProvider(callback=lambda ev: None)
-    lifecycle = AgentLifecycle(config=config, db=db, provider=provider, window_minutes=15)
+    lifecycle = AgentLifecycle(config=config, db=db, provider=provider, window_minutes=15, require_consent=False)
     lifecycle.start(start_time_utc=datetime(2026, 11, 16, 10, 20, tzinfo=dt_timezone.utc))
 
     # Recovery must have recorded the interrupted window with low coverage
@@ -180,7 +181,7 @@ def test_status_line_and_pause_resume_via_commands():
     config = EDCConfig(timezone="Asia/Kolkata")
     provider = FakeInputProvider(callback=lambda ev: None)
 
-    lifecycle = AgentLifecycle(config=config, db=db, provider=provider, window_minutes=15)
+    lifecycle = AgentLifecycle(config=config, db=db, provider=provider, window_minutes=15, require_consent=False)
     provider.callback = lifecycle.on_event
 
     t_start = datetime(2026, 11, 16, 9, 0, tzinfo=dt_timezone.utc)

@@ -292,6 +292,76 @@ class Database:
             with conn:
                 conn.execute(query, (key, value))
 
+    def insert_consent_record(self, consented_at: str, version: str, status: str = "consented") -> int:
+        """Record a user privacy consent decision in consent_records."""
+        conn = self.get_connection()
+        query = "INSERT INTO consent_records (consented_at, version, status) VALUES (?, ?, ?);"
+        if self._is_memory:
+            cur = conn.execute(query, (consented_at, version, status))
+            conn.commit()
+            return cur.lastrowid  # type: ignore[return-value]
+        with conn:
+            cur = conn.execute(query, (consented_at, version, status))
+            return cur.lastrowid  # type: ignore[return-value]
+
+    def get_latest_consent_record(self) -> Optional[sqlite3.Row]:
+        """Fetch the most recent consent decision."""
+        conn = self.get_connection()
+        cur = conn.execute("SELECT * FROM consent_records ORDER BY id DESC LIMIT 1;")
+        return cur.fetchone()
+
+    def insert_self_report(self, ts_utc: str, label: str, value: str) -> int:
+        """Store a self-report label or metric in self_reports."""
+        conn = self.get_connection()
+        query = "INSERT INTO self_reports (ts_utc, label, value) VALUES (?, ?, ?);"
+        if self._is_memory:
+            cur = conn.execute(query, (ts_utc, label, value))
+            conn.commit()
+            return cur.lastrowid  # type: ignore[return-value]
+        with conn:
+            cur = conn.execute(query, (ts_utc, label, value))
+            return cur.lastrowid  # type: ignore[return-value]
+
+    def get_self_reports(self) -> List[sqlite3.Row]:
+        """Fetch all recorded self-reports."""
+        conn = self.get_connection()
+        cur = conn.execute("SELECT * FROM self_reports ORDER BY id ASC;")
+        return cur.fetchall()
+
+    def get_all_rollups_15min(self) -> List[Rollup15Min]:
+        """Fetch all 15-minute rollups ordered by window_start."""
+        conn = self.get_connection()
+        cur = conn.execute("SELECT payload FROM rollups_15min ORDER BY window_start ASC;")
+        return [Rollup15Min.model_validate_json(row["payload"]) for row in cur.fetchall()]
+
+    def get_all_rollups_daily(self) -> List[RollupDaily]:
+        """Fetch all daily rollups ordered by logical_day."""
+        conn = self.get_connection()
+        cur = conn.execute("SELECT payload FROM rollups_daily ORDER BY logical_day ASC;")
+        return [RollupDaily.model_validate_json(row["payload"]) for row in cur.fetchall()]
+
+    def clear_all_data(self) -> None:
+        """Wipe all user data tables and state (delete-all-data)."""
+        tables = [
+            "rollups_15min",
+            "rollups_daily",
+            "upload_queue",
+            "self_reports",
+            "consent_records",
+            "agent_state",
+            "gap_log",
+        ]
+        conn = self.get_connection()
+        if self._is_memory:
+            for t in tables:
+                conn.execute(f"DELETE FROM {t};")
+            conn.commit()
+        else:
+            with conn:
+                for t in tables:
+                    conn.execute(f"DELETE FROM {t};")
+            conn.execute("VACUUM;")
+
     def list_tables(self) -> List[str]:
         """Return all user table names created in the database."""
         conn = self.get_connection()

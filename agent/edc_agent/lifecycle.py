@@ -59,9 +59,11 @@ class AgentLifecycle:
         state_monitor: Optional[Any] = None,
         window_minutes: int = 15,
         db_path: Optional[Union[str, Path]] = None,
+        require_consent: bool = True,
     ):
         self.config = config or load_config()
         self.window_minutes = window_minutes
+        self.require_consent = require_consent
 
         # Database setup
         if db is not None:
@@ -137,6 +139,13 @@ class AgentLifecycle:
         with self._lock:
             if self._status == "collecting":
                 return
+
+            from edc_agent.privacy.consent import has_consent
+            if self.require_consent and not has_consent(self.db):
+                raise PermissionError(
+                    "Data collection requires explicit user consent acknowledgement. "
+                    "Run 'edc consent' or prompt_for_consent() before starting."
+                )
 
             logger.info("Starting EDC agent lifecycle (window=%d mins)...", self.window_minutes)
 
