@@ -14,7 +14,14 @@ import sys
 import threading
 import time
 
-from edc_agent.client import UploadClient, enroll_agent
+from edc_agent.autostart import (
+    disable_autostart,
+    enable_autostart,
+    get_autostart_entry,
+    is_autostart_enabled,
+    is_autostart_supported,
+)
+from edc_agent.client import UploadClient, delete_credential, enroll_agent
 from edc_agent.config import load_config
 from edc_agent.lifecycle import AgentLifecycle
 from edc_agent.logging_config import setup_logging
@@ -252,6 +259,98 @@ def cmd_upload(
     return 0 if stats.get("total_failed", 0) == 0 else 1
 
 
+def cmd_autostart(action: str = "status", args: str = "run") -> int:
+    """Manage user-level auto-start on user login."""
+    if not is_autostart_supported():
+        sys.stderr.write("[EDC ERROR] Auto-start via HKCU registry is only supported on Windows.\n")
+        return 1
+
+    if action == "status":
+        enabled = is_autostart_enabled()
+        cmd = get_autostart_entry()
+        sys.stdout.write(f"[EDC AUTO-START] Status: {'ENABLED' if enabled else 'DISABLED'}\n")
+        if cmd:
+            sys.stdout.write(f"  Command: {cmd}\n")
+        return 0
+    elif action == "enable":
+        ok, msg = enable_autostart(args=args)
+        if ok:
+            sys.stdout.write(f"[EDC] Auto-start enabled successfully.\n  Command: {msg}\n")
+            return 0
+        else:
+            sys.stderr.write(f"[EDC ERROR] Failed to enable auto-start: {msg}\n")
+            return 1
+    elif action == "disable":
+        ok, msg = disable_autostart()
+        if ok:
+            sys.stdout.write("[EDC] Auto-start disabled successfully.\n")
+            return 0
+        else:
+            sys.stderr.write(f"[EDC ERROR] Failed to disable auto-start: {msg}\n")
+            return 1
+    else:
+        sys.stderr.write(f"[EDC ERROR] Unknown autostart action '{action}'. Use status, enable, or disable.\n")
+        return 1
+
+
+def cmd_uninstall(
+    wipe_data: bool = False,
+    wipe_credentials: bool = False,
+    confirmed: bool = False,
+    db_path: Optional[str] = None,
+) -> int:
+    """Perform uninstallation cleanup: disable auto-start, delete credentials, and wipe local data."""
+    if not confirmed:
+        sys.stdout.write("======================================================================\n")
+        sys.stdout.write("  EDC Agent Uninstallation & Data Cleanup\n")
+        sys.stdout.write("======================================================================\n")
+        sys.stdout.write("This operation can perform the following cleanup tasks:\n")
+        sys.stdout.write("  1. Remove user-level auto-start from Windows registry (HKCU Run).\n")
+        if wipe_credentials:
+            sys.stdout.write("  2. Permanently delete agent API credentials from the OS Credential Store.\n")
+        if wipe_data:
+            sys.stdout.write("  3. Permanently wipe all local data, SQLite databases, and log files.\n")
+        sys.stdout.write("\nType 'UNINSTALL' to proceed: ")
+        sys.stdout.flush()
+        try:
+            val = input().strip()
+        except (EOFError, KeyboardInterrupt):
+            sys.stdout.write("\n[EDC] Uninstallation aborted.\n")
+            return 1
+
+        if val != "UNINSTALL":
+            sys.stdout.write("[EDC] Uninstallation cancelled.\n")
+            return 1
+
+    # 1. Disable auto-start
+    if is_autostart_supported():
+        disable_autostart()
+        sys.stdout.write("[EDC] Removed user-level auto-start registry entry.\n")
+
+    # 2. Delete credentials from OS credential store
+    if wipe_credentials:
+        deleted_cred = delete_credential()
+        if deleted_cred:
+            sys.stdout.write("[EDC] Removed device API credentials from OS Credential Store.\n")
+        else:
+            sys.stdout.write("[EDC] No stored credentials found in OS Credential Store.\n")
+
+    # 3. Wipe data and logs
+    if wipe_data:
+        import shutil
+        db_dir = Path(db_path).parent if db_path else Path.home() / ".edc"
+        if db_dir.exists():
+            try:
+                shutil.rmtree(db_dir)
+                sys.stdout.write(f"[EDC] Removed all data and log files at: {db_dir.resolve()}\n")
+            except Exception as exc:
+                sys.stderr.write(f"[EDC ERROR] Failed to delete data directory: {exc}\n")
+                return 1
+
+    sys.stdout.write("[EDC] Uninstallation cleanup completed successfully.\n")
+    return 0
+
+
 def main() -> int:
     """CLI parser and dispatch."""
     parser = argparse.ArgumentParser(
@@ -329,6 +428,23 @@ def main() -> int:
         help="Maximum rollups per batch upload (default: 20)",
     )
 
+    # autostart command
+    autostart_parser = subparsers.add_parser("autostart", help="Configure user-level auto-start on Windows login")
+    autostart_group = autostart_parser.add_mutually_exclusive_group(required=False)
+    autostart_group.add_argument("--enable", action="store_true", help="Enable auto-start on user login")
+    autostart_group.add_argument("--disable", action="store_true", help="Disable auto-start on user login")
+    autostart_group.add_argument("--status", action="store_true", default=True, help="Display current auto-start status")
+    autostart_parser.add_argument("--args", default="run", help="Subcommand/arguments for auto-start (default: 'run')")
+
+    # uninstall command
+    uninstall_parser = subparsers.add_parser("uninstall", help="Cleanly uninstall EDC agent, disable auto-start, and remove data")
+    uninstall_parser.add_argument("--wipe-data", action="store_true", default=True, help="Permanently delete local database and logs (~/.edc)")
+    uninstall_parser.add_argument("--keep-data", dest="wipe_data", action="store_false", help="Preserve local database and log files")
+    uninstall_parser.add_argument("--wipe-credentials", action="store_true", default=True, help="Delete agent API credentials from OS Credential Store")
+    uninstall_parser.add_argument("--keep-credentials", dest="wipe_credentials", action="store_false", help="Preserve OS stored credentials")
+    uninstall_parser.add_argument("--yes", "-y", action="store_true", help="Confirm uninstallation non-interactively")
+    uninstall_parser.add_argument("--db", help="Path to SQLite database file")
+
     args, unknown = parser.parse_known_args()
 
     # Default to 'run' if no subcommand specified
@@ -379,6 +495,16 @@ def main() -> int:
             server_url=args.server,
             db_path=args.db,
             batch_size=args.batch_size,
+        )
+    elif args.subcommand == "autostart":
+        action = "enable" if args.enable else ("disable" if args.disable else "status")
+        return cmd_autostart(action=action, args=args.args)
+    elif args.subcommand == "uninstall":
+        return cmd_uninstall(
+            wipe_data=args.wipe_data,
+            wipe_credentials=args.wipe_credentials,
+            confirmed=args.yes,
+            db_path=args.db,
         )
 
     parser.print_help()

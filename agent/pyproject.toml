@@ -24,6 +24,7 @@ edc = "edc_agent.main:cli_entrypoint"
 dev = [
     "pytest>=8.0.0",
     "numpy>=1.26.0",
+    "pyinstaller>=6.0.0",
 ]
 
 [tool.pytest.ini_options]
