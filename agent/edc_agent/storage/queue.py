@@ -57,14 +57,15 @@ class UploadQueue:
             cur = conn.execute(query, params)
             return cur.lastrowid  # type: ignore[return-value]
 
-    def fetch_pending(self, limit: int = 50) -> List[QueueItem]:
-        """Fetch up to limit pending items from the queue."""
+    def fetch_pending(self, limit: int = 50, include_failed: bool = True) -> List[QueueItem]:
+        """Fetch up to limit pending or failed items eligible for upload."""
         conn = self.db.get_connection()
+        status_filter = "status IN ('pending', 'failed')" if include_failed else "status = 'pending'"
         cursor = conn.execute(
-            """
+            f"""
             SELECT id, batch_id, rollup_type, rollup_id, status, attempts, last_attempt_at, created_at
             FROM upload_queue
-            WHERE status = 'pending'
+            WHERE {status_filter}
             ORDER BY id ASC
             LIMIT ?;
             """,
@@ -86,21 +87,57 @@ class UploadQueue:
             )
         return items
 
-    def mark_uploading(self, queue_ids: List[int]) -> None:
-        """Mark items as uploading and increment attempt counters."""
+    def prune_accepted(self, retention_days: int = 14) -> int:
+        """Prune delivered queue items older than retention_days (Retention Policy)."""
+        from datetime import timedelta
+        cutoff_iso = (datetime.now(timezone.utc) - timedelta(days=retention_days)).isoformat()
+        conn = self.db.get_connection()
+        query = "DELETE FROM upload_queue WHERE status = 'done' AND created_at < ?;"
+
+        if self.db._is_memory:
+            cur = conn.execute(query, (cutoff_iso,))
+            conn.commit()
+            return cur.rowcount
+        with conn:
+            cur = conn.execute(query, (cutoff_iso,))
+            return cur.rowcount
+
+    def count_by_status(self) -> dict:
+        """Return counts of items grouped by status."""
+        conn = self.db.get_connection()
+        cur = conn.execute("SELECT status, COUNT(*) as cnt FROM upload_queue GROUP BY status;")
+        return {row["status"]: row["cnt"] for row in cur.fetchall()}
+
+    def mark_uploading(
+        self,
+        queue_ids: List[int],
+        batch_id: Optional[Union[UUID, str]] = None,
+    ) -> None:
+        """Mark items as uploading, optionally assigning a shared batch_id, and increment attempt counters."""
         if not queue_ids:
             return
         placeholders = ",".join("?" for _ in queue_ids)
         now_utc = datetime.now(timezone.utc).isoformat()
         conn = self.db.get_connection()
-        query = f"""
-        UPDATE upload_queue
-        SET status = 'uploading',
-            attempts = attempts + 1,
-            last_attempt_at = ?
-        WHERE id IN ({placeholders});
-        """
-        params = [now_utc] + queue_ids
+        if batch_id is not None:
+            query = f"""
+            UPDATE upload_queue
+            SET status = 'uploading',
+                batch_id = ?,
+                attempts = attempts + 1,
+                last_attempt_at = ?
+            WHERE id IN ({placeholders});
+            """
+            params = [str(batch_id), now_utc] + queue_ids
+        else:
+            query = f"""
+            UPDATE upload_queue
+            SET status = 'uploading',
+                attempts = attempts + 1,
+                last_attempt_at = ?
+            WHERE id IN ({placeholders});
+            """
+            params = [now_utc] + queue_ids
 
         if self.db._is_memory:
             conn.execute(query, params)

@@ -14,6 +14,7 @@ import sys
 import threading
 import time
 
+from edc_agent.client import UploadClient, enroll_agent
 from edc_agent.config import load_config
 from edc_agent.lifecycle import AgentLifecycle
 from edc_agent.logging_config import setup_logging
@@ -205,6 +206,52 @@ def cmd_delete_all_data(db_path: Optional[str] = None, confirmed: bool = False) 
     return 0 if deleted else 1
 
 
+def cmd_enroll(
+    token: str,
+    server_url: Optional[str] = None,
+    db_path: Optional[str] = None,
+) -> int:
+    """Enroll agent using one-time token and store credential in OS credential store."""
+    database_path = Path(db_path) if db_path else get_default_db_path()
+    db = Database(database_path)
+    srv_url = server_url or db.get_agent_state("server_url") or "http://127.0.0.1:8000"
+
+    try:
+        sys.stdout.write(f"[EDC] Enrolling device with server {srv_url}...\n")
+        res = enroll_agent(server_url=srv_url, enrollment_token=token, db=db)
+        sys.stdout.write(
+            f"[EDC] Enrollment successful! Device enrolled for employee '{res.get('employee_code')}'.\n"
+        )
+        sys.stdout.write("[EDC] Credential securely stored in OS credential store.\n")
+        return 0
+    except Exception as exc:
+        sys.stderr.write(f"[EDC ERROR] Enrollment failed: {exc}\n")
+        return 1
+
+
+def cmd_upload(
+    server_url: Optional[str] = None,
+    db_path: Optional[str] = None,
+    batch_size: int = 20,
+) -> int:
+    """Upload pending metric batches from SQLite queue to backend over HTTPS."""
+    database_path = Path(db_path) if db_path else get_default_db_path()
+    if str(database_path) != ":memory:" and not database_path.exists():
+        sys.stderr.write(f"[EDC ERROR] Database not found at {database_path}.\n")
+        return 1
+
+    db = Database(database_path)
+    client = UploadClient(db=db, server_url=server_url)
+
+    sys.stdout.write(f"[EDC] Uploading metric batches to {client.server_url}...\n")
+    stats = client.sync_all(batch_size=batch_size)
+    sys.stdout.write(
+        f"[EDC] Upload completed: {stats.get('total_uploaded', 0)} rollups delivered across "
+        f"{stats.get('batches_processed', 0)} batches (failed: {stats.get('total_failed', 0)}).\n"
+    )
+    return 0 if stats.get("total_failed", 0) == 0 else 1
+
+
 def main() -> int:
     """CLI parser and dispatch."""
     parser = argparse.ArgumentParser(
@@ -265,6 +312,23 @@ def main() -> int:
     delete_parser.add_argument("--db", help="Path to SQLite database file")
     delete_parser.add_argument("--yes", "-y", action="store_true", help="Confirm deletion non-interactively")
 
+    # enroll command
+    enroll_parser = subparsers.add_parser("enroll", help="Enroll device with backend using one-time token")
+    enroll_parser.add_argument("token", help="One-time enrollment token issued by administrator")
+    enroll_parser.add_argument("--server", help="EDC backend server base URL (e.g. https://edc.example.com)")
+    enroll_parser.add_argument("--db", help="Path to SQLite database file")
+
+    # upload command
+    upload_parser = subparsers.add_parser("upload", help="Upload pending metric batches from queue to backend")
+    upload_parser.add_argument("--server", help="EDC backend server base URL")
+    upload_parser.add_argument("--db", help="Path to SQLite database file")
+    upload_parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=20,
+        help="Maximum rollups per batch upload (default: 20)",
+    )
+
     args, unknown = parser.parse_known_args()
 
     # Default to 'run' if no subcommand specified
@@ -303,6 +367,18 @@ def main() -> int:
         return cmd_delete_all_data(
             db_path=args.db,
             confirmed=getattr(args, "yes", False),
+        )
+    elif args.subcommand == "enroll":
+        return cmd_enroll(
+            token=args.token,
+            server_url=args.server,
+            db_path=args.db,
+        )
+    elif args.subcommand == "upload":
+        return cmd_upload(
+            server_url=args.server,
+            db_path=args.db,
+            batch_size=args.batch_size,
         )
 
     parser.print_help()

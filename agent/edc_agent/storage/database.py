@@ -239,6 +239,17 @@ class Database:
             return None
         return RollupDaily.model_validate_json(row["payload"])
 
+    def get_rollup_daily_by_id(self, rollup_id: int) -> Optional[RollupDaily]:
+        """Fetch and reconstruct a validated RollupDaily instance by id."""
+        conn = self.get_connection()
+        cursor = conn.execute(
+            "SELECT payload FROM rollups_daily WHERE id = ?;", (rollup_id,)
+        )
+        row = cursor.fetchone()
+        if not row:
+            return None
+        return RollupDaily.model_validate_json(row["payload"])
+
     def check_rollup_15min_exists(self, window_start: str, window_end: str) -> bool:
         """Check if a 15-minute rollup already exists for given bounds."""
         conn = self.get_connection()

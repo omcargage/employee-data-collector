@@ -31,6 +31,7 @@ from edc_agent.metrics import (
 )
 from edc_agent.platforms.base import InputProvider
 from edc_agent.storage.database import Database
+from edc_agent.storage.queue import UploadQueue
 from edc_agent.timeutil import (
     CoverageTracker,
     is_weekend,
@@ -80,6 +81,7 @@ class AgentLifecycle:
             window_minutes=self.window_minutes,
         )
         self.heartbeat_manager = HeartbeatManager(self.db, interval_s=10.0)
+        self.upload_queue = UploadQueue(self.db)
         self.coverage_tracker = CoverageTracker()
         self.day_coverage_tracker = CoverageTracker()
 
@@ -262,7 +264,9 @@ class AgentLifecycle:
                     decimal_hour=local_decimal_hour(prev_start, self.config.timezone),
                     blocks=dummy_blocks,
                 )
-                self.db.insert_rollup_15min(interrupted_rollup)
+                interrupted_id = self.db.insert_rollup_15min(interrupted_rollup)
+                if interrupted_id:
+                    self.upload_queue.enqueue("15min", interrupted_id)
                 self.closed_windows_count += 1
                 self.db.insert_gap_log(
                     start_ts=prev_start,
@@ -414,7 +418,9 @@ class AgentLifecycle:
             **metrics_dict,
         )
 
-        self.db.insert_rollup_15min(rollup)
+        rollup_id = self.db.insert_rollup_15min(rollup)
+        if rollup_id:
+            self.upload_queue.enqueue("15min", rollup_id)
         self.closed_windows_count += 1
         self.db.set_agent_state("last_closed_window_end", end_iso)
         self.db.set_dropped_events_count(self.collector.dropped_events_count)
@@ -460,7 +466,9 @@ class AgentLifecycle:
             deep_work_min=self.config.deep_work_min,
         )
 
-        self.db.insert_rollup_daily(rollup_daily)
+        daily_id = self.db.insert_rollup_daily(rollup_daily)
+        if daily_id:
+            self.upload_queue.enqueue("daily", daily_id)
         for gap in self.day_classified_gaps:
             gap_type_str = gap.gap_type.value if hasattr(gap.gap_type, "value") else str(gap.gap_type)
             self.db.insert_gap_log(gap.start_utc, gap.end_utc, gap.duration_s, gap_type_str)
