@@ -201,6 +201,43 @@ def cmd_export_data(
     return 0
 
 
+def cmd_export_ml(
+    db_path: Optional[str] = None,
+    output_dir: Optional[str] = None,
+    prefix: str = "edc_ml_dataset",
+    window_size: int = 7,
+    test_size: float = 0.2,
+) -> int:
+    """Export ML dataset with rolling baseline normalization and subject splits."""
+    from edc_agent.ml import export_ml_dataset, prepare_ml_records_from_database
+
+    database_path = Path(db_path) if db_path else get_default_db_path()
+    if not database_path.exists():
+        sys.stderr.write(f"[EDC ERROR] Database not found at {database_path}.\n")
+        return 1
+
+    db = Database(database_path)
+    records = prepare_ml_records_from_database(db=db)
+    if not records:
+        sys.stdout.write("[EDC] No rollups available to export.\n")
+        return 0
+
+    out_dir = Path(output_dir) if output_dir else Path(".")
+    out_file = out_dir / f"{prefix}.csv"
+    path, stats = export_ml_dataset(
+        records=records,
+        output_csv_path=out_file,
+        window_size=window_size,
+        test_size=test_size,
+    )
+    sys.stdout.write(f"[EDC] Exported normalized ML dataset to: {path.resolve()}\n")
+    sys.stdout.write(
+        f"  Total: {stats.get('total_records', 0)} rows across {stats.get('n_persons', 0)} subject(s) "
+        f"(Train: {stats.get('train_records', 0)}, Test: {stats.get('test_records', 0)})\n"
+    )
+    return 0
+
+
 def cmd_delete_all_data(db_path: Optional[str] = None, confirmed: bool = False) -> int:
     """Permanently wipe all local data from SQLite upon confirmation."""
     database_path = Path(db_path) if db_path else get_default_db_path()
@@ -406,6 +443,27 @@ def main() -> int:
     export_parser.add_argument("--output-dir", "-o", default=".", help="Directory to save CSV files")
     export_parser.add_argument("--prefix", default="edc_export", help="CSV filename prefix")
 
+    # export-ml command
+    export_ml_parser = subparsers.add_parser(
+        "export-ml",
+        help="Export ML dataset with per-person rolling median/MAD normalization and subject splits",
+    )
+    export_ml_parser.add_argument("--db", help="Path to SQLite database file")
+    export_ml_parser.add_argument("--output-dir", "-o", default=".", help="Directory to save ML CSV files")
+    export_ml_parser.add_argument("--prefix", default="edc_ml_dataset", help="CSV filename prefix")
+    export_ml_parser.add_argument(
+        "--window-size",
+        type=int,
+        default=7,
+        help="Lookback window size for rolling median and MAD (default: 7)",
+    )
+    export_ml_parser.add_argument(
+        "--test-size",
+        type=float,
+        default=0.2,
+        help="Fraction of unique subjects assigned to test split (default: 0.2)",
+    )
+
     # delete-all-data command
     delete_parser = subparsers.add_parser("delete-all-data", help="Permanently delete all local data")
     delete_parser.add_argument("--db", help="Path to SQLite database file")
@@ -478,6 +536,14 @@ def main() -> int:
             db_path=args.db,
             output_dir=args.output_dir,
             prefix=args.prefix,
+        )
+    elif args.subcommand == "export-ml":
+        return cmd_export_ml(
+            db_path=args.db,
+            output_dir=args.output_dir,
+            prefix=args.prefix,
+            window_size=args.window_size,
+            test_size=args.test_size,
         )
     elif args.subcommand == "delete-all-data":
         return cmd_delete_all_data(
