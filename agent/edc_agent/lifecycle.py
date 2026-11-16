@@ -196,21 +196,17 @@ class AgentLifecycle:
             self._error_message = None
 
     def _init_default_provider(self) -> None:
-        """Instantiate default OS input provider (WindowsInputProvider on Windows)."""
-        import sys
-        if sys.platform == "win32":
-            try:
-                from edc_agent.platforms.windows.provider import WindowsInputProvider
-                self.provider = WindowsInputProvider(
-                    callback=self.on_event,
-                    mouse_bin_ms=self.config.mouse_bin_ms,
-                )
-                return
-            except Exception as e:
-                logger.warning("Failed to initialize WindowsInputProvider: %s", e)
-
-        from edc_agent.platforms.fake import FakeInputProvider
-        self.provider = FakeInputProvider(callback=self.on_event)
+        """Instantiate default OS input provider using platform detection."""
+        try:
+            from edc_agent.platforms import get_platform_provider
+            self.provider = get_platform_provider(
+                callback=self.on_event,
+                mouse_bin_ms=self.config.mouse_bin_ms,
+            )
+        except Exception as e:
+            logger.warning("Failed to initialize platform input provider: %s; falling back to FakeInputProvider", e)
+            from edc_agent.platforms.fake import FakeInputProvider
+            self.provider = FakeInputProvider(callback=self.on_event)
 
     def _init_default_state_monitor(self) -> None:
         """Instantiate default system state monitor on Windows."""
