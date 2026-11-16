@@ -50,6 +50,7 @@ class Employee(Base):
 
     devices: Mapped[List["Device"]] = relationship("Device", back_populates="employee", cascade="all, delete-orphan")
     consent_records: Mapped[List["ConsentRecord"]] = relationship("ConsentRecord", back_populates="employee", cascade="all, delete-orphan")
+    enrollments: Mapped[List["DeviceEnrollment"]] = relationship("DeviceEnrollment", back_populates="employee", cascade="all, delete-orphan")
 
 
 class Device(Base):
@@ -76,13 +77,17 @@ class DeviceEnrollment(Base):
     __tablename__ = "device_enrollments"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
-    device_id: Mapped[str] = mapped_column(String(128), ForeignKey("devices.id", ondelete="CASCADE"), index=True, nullable=False)
+    employee_id: Mapped[Optional[uuid.UUID]] = mapped_column(Uuid, ForeignKey("employees.id", ondelete="CASCADE"), index=True, nullable=True)
+    device_id: Mapped[Optional[str]] = mapped_column(String(128), ForeignKey("devices.id", ondelete="CASCADE"), index=True, nullable=True)
     token_hash: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
-    status: Mapped[str] = mapped_column(String(32), default="enrolled", nullable=False)  # pending, enrolled, revoked
-    enrolled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    credential_hash: Mapped[Optional[str]] = mapped_column(String(255), unique=True, index=True, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="pending", nullable=False)  # pending, enrolled, revoked
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    enrolled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    device: Mapped["Device"] = relationship("Device", back_populates="enrollments")
+    employee: Mapped[Optional["Employee"]] = relationship("Employee", back_populates="enrollments")
+    device: Mapped[Optional["Device"]] = relationship("Device", back_populates="enrollments")
 
 
 class ConsentRecord(Base):

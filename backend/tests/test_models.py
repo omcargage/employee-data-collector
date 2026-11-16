@@ -67,8 +67,10 @@ def test_device_enrollment_and_consent_records(db_session: Session):
 
     # Device enrollment token
     enrollment = DeviceEnrollment(
+        employee_id=emp.id,
         device_id=dev.id,
         token_hash="sha256:abc123tokenhashedvalue",
+        credential_hash="sha256:cred123",
         status="enrolled",
     )
     db_session.add(enrollment)
