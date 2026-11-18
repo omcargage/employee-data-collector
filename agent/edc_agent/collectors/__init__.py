@@ -3,6 +3,7 @@
 Gathers keyboard, mouse, and system activity events in-memory using platform input providers.
 """
 from .activity_collector import ActivityCollector, WindowAccumulator
+from .communication_tracker import CommunicationTracker
 from .gap_classifier import GapType, HeartbeatManager, classify_gap
 from .keyboard_collector import accumulate_keyboard
 from .mouse_collector import accumulate_mouse
@@ -57,6 +58,7 @@ __all__ = [
     "GapType",
     "classify_gap",
     "HeartbeatManager",
+    "CommunicationTracker",
     "accumulate_keyboard",
     "accumulate_mouse",
     "accumulate_window_blocks",

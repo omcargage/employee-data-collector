@@ -48,3 +48,9 @@ late_night_window = "22:00-05:00"
 after_hours_day_min = 30
 late_night_min = 10
 no_lunch_break_min = 15
+
+# Communication tracking (Option 2 desktop process heuristic)
+comm_apps = [
+    "slack", "teams", "ms-teams", "outlook", "thunderbird",
+    "discord", "whatsapp", "telegram", "signal", "skype", "zoom", "element"
+]

@@ -34,3 +34,4 @@ class ActivityEvent(BaseModel):
     button: Optional[int] = Field(default=None, description="Mouse button index (e.g. 1=left, 2=right, 3=middle)")
     scroll_ticks: Optional[int] = Field(default=None, description="Vertical/horizontal scroll tick magnitude")
     key_up_ts: Optional[datetime] = Field(default=None, description="Optional key release timestamp for dwell time")
+    is_enter: Optional[bool] = Field(default=None, description="True if key is Enter/Return (for message detection)")

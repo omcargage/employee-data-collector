@@ -20,6 +20,7 @@ from edc_schemas import (
 from edc_agent.config import EDCConfig, load_config
 from edc_agent.collectors import (
     ActivityCollector,
+    CommunicationTracker,
     GapType,
     HeartbeatManager,
     accumulate_window_blocks,
@@ -84,6 +85,10 @@ class AgentLifecycle:
         self.upload_queue = UploadQueue(self.db)
         self.coverage_tracker = CoverageTracker()
         self.day_coverage_tracker = CoverageTracker()
+        self.communication_tracker = CommunicationTracker(
+            comm_apps=getattr(self.config, "comm_apps", None),
+            db=self.db,
+        )
 
         # Input provider & state monitor (platform specific or injected)
         self.provider = provider
@@ -126,6 +131,7 @@ class AgentLifecycle:
             if self._status != "collecting":
                 return
             self.collector.on_event(event)
+            self.communication_tracker.on_event(event)
             # Retain lightweight event for daily session & work-hour metrics
             self.day_events.append(ActivityEvent(ts_utc=event.ts_utc, kind=event.kind))
 
@@ -399,6 +405,17 @@ class AgentLifecycle:
         local_start = w_start.astimezone(tz)
         log_day = to_logical_day(w_start, self.config.timezone, day_start_hour=self._day_start_hour)
 
+        tot_keys = metrics_dict.get("total_keystrokes")
+        mean_fl = metrics_dict.get("mean_flight_time_ms")
+        std_fl = metrics_dict.get("flight_time_std_ms")
+        alias_dict = {
+            "keystroke_count": tot_keys,
+            "average_keystroke_interval_seconds": round(mean_fl / 1000.0, 6) if mean_fl is not None else None,
+            "keystroke_interval_stdev_seconds": round(std_fl / 1000.0, 6) if std_fl is not None else None,
+            "timestamp": w_start,
+            "profile": getattr(self.config, "profile", None),
+        }
+
         rollup = Rollup15Min(
             schema_version="1.0.0",
             agent_version="0.1.0",
@@ -412,6 +429,7 @@ class AgentLifecycle:
             decimal_hour=local_decimal_hour(w_start, self.config.timezone),
             blocks=blocks,
             **metrics_dict,
+            **alias_dict,
         )
 
         rollup_id = self.db.insert_rollup_15min(rollup)
@@ -438,6 +456,15 @@ class AgentLifecycle:
         day_cov_ratio = self.day_coverage_tracker.coverage_ratio(day_start_utc, day_end_utc)
         history_days = self.db.get_recent_rollups_daily(limit=7)
 
+        # Compute communication metrics via process heuristic tracker
+        comm_metrics = self.communication_tracker.compute_daily_metrics(
+            completed_day,
+            tz_name=self.config.timezone,
+            shift_start=self.config.shift_start,
+            shift_end=self.config.shift_end,
+            late_night_window=self.config.late_night_window,
+        )
+
         rollup_daily = build_rollup_daily(
             logical_day=completed_day,
             events=self.day_events,
@@ -460,7 +487,10 @@ class AgentLifecycle:
             focus_gap_s=self.config.focus_gap_s,
             focus_block_min=self.config.focus_block_min,
             deep_work_min=self.config.deep_work_min,
+            comm_metrics=comm_metrics,
+            profile=getattr(self.config, "profile", None),
         )
+        self.communication_tracker.reset_day()
 
         daily_id = self.db.insert_rollup_daily(rollup_daily)
         if daily_id:

@@ -2,7 +2,7 @@
 
 Replays a scripted list of ActivityEvent instances to the registered callback.
 """
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 import threading
 
 from edc_schemas import ActivityEvent
@@ -50,6 +50,14 @@ class FakeInputProvider(InputProvider):
         """Replay all scripted events synchronously on the calling thread."""
         for event in self._events:
             self.emit(event)
+
+    def emit_key(self, kind: Any = None, ts: Optional[Any] = None, is_enter: bool = False) -> None:
+        """Emit a single synthetic key event."""
+        from datetime import datetime, timezone
+        from edc_schemas import EventKind
+        k = kind or EventKind.KEY_CHAR
+        now = ts or datetime.now(timezone.utc)
+        self.emit(ActivityEvent(ts_utc=now, kind=k, is_enter=True if is_enter else None))
 
     def _run_replay(self) -> None:
         for event in self._events:

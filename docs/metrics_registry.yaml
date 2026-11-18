@@ -697,42 +697,42 @@ metrics:
     implemented: true
 
   # ---------------------------------------------------------------------------
-  # External / Export Joins (Spec Section 8)
+  # Communication & Messaging Metrics (Option 2 Desktop Process Heuristic)
   # ---------------------------------------------------------------------------
   - name: total_msgs_sent
     window: daily
-    tag: EXTERNAL
+    tag: DIRECT
     depends_on: []
-    null_rule: "always null on desktop agent (requires chat/email integration)"
-    implemented: false
+    null_rule: "0 if no messages detected (never null)"
+    implemented: true
 
   - name: msgs_sent_after_hours
     window: daily
-    tag: EXTERNAL
+    tag: DIRECT
     depends_on: []
-    null_rule: "always null on desktop agent (requires chat/email integration)"
-    implemented: false
+    null_rule: "0 if no messages detected (never null)"
+    implemented: true
 
   - name: msgs_sent_late_night
     window: daily
-    tag: EXTERNAL
+    tag: DIRECT
     depends_on: []
-    null_rule: "always null on desktop agent (requires chat/email integration)"
-    implemented: false
+    null_rule: "0 if no messages detected (never null)"
+    implemented: true
 
   - name: first_msg_time
     window: daily
-    tag: EXTERNAL
+    tag: DIRECT
     depends_on: []
-    null_rule: "always null on desktop agent (requires chat/email integration)"
-    implemented: false
+    null_rule: "null if total_msgs_sent == 0"
+    implemented: true
 
   - name: last_msg_time
     window: daily
-    tag: EXTERNAL
+    tag: DIRECT
     depends_on: []
-    null_rule: "always null on desktop agent (requires chat/email integration)"
-    implemented: false
+    null_rule: "null if total_msgs_sent == 0"
+    implemented: true
 
   - name: profile
     window: daily

@@ -203,7 +203,7 @@ Focus metrics are behavioural proxies. They show uninterrupted input, not concen
 
 | Columns | Reason | Tag |
 |---|---|---|
-| `total_msgs_sent`, `msgs_sent_after_hours`, `msgs_sent_late_night`, `first_msg_time`, `last_msg_time` | Need a separately authorised email/chat integration, with its own consent | EXTERNAL |
+| `total_msgs_sent`, `msgs_sent_after_hours`, `msgs_sent_late_night`, `first_msg_time`, `last_msg_time` | Computed via Option 2 desktop process heuristic (monitoring foreground communication applications: Slack, Teams, Outlook, etc.) | DIRECT |
 | Click force / hard taps | No standard API | EXCLUDED |
 | `profile` | A person identifier. Join at export time; never a feature | n/a |
 | `state` | A label (e.g. self-reported stress). Join at export time from the self-report table; never computed on the device | n/a |

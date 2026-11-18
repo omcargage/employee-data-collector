@@ -72,6 +72,13 @@ class Rollup15Min(BaseModel):
     pointer_idle_s: Optional[float] = Field(default=None, description="Seconds without mouse input")
     short_idle_total_s: Optional[float] = Field(default=None, description="Combined keyboard/mouse silence (60s-300s)")
 
+    # Aliases & export compatibility
+    keystroke_count: Optional[int] = Field(default=None, description="Alias for total_keystrokes")
+    average_keystroke_interval_seconds: Optional[float] = Field(default=None, description="Alias for mean_flight_time_ms / 1000")
+    keystroke_interval_stdev_seconds: Optional[float] = Field(default=None, description="Alias for flight_time_std_ms / 1000")
+    timestamp: Optional[datetime] = Field(default=None, description="Window start timestamp alias")
+    profile: Optional[str] = Field(default=None, description="Optional employee profile or role identifier")
+
     # Underlying additive sufficient statistics
     blocks: WindowBlocks = Field(description="Underlying additive sufficient statistics for exact window merging")
 
@@ -128,3 +135,14 @@ class RollupDaily(BaseModel):
     late_night_flag: Optional[bool] = Field(default=None, description="True if active minutes in late_night_window >= threshold")
     after_hours_ratio_7d_avg: Optional[float] = Field(default=None, description="7-day rolling average of after-hours ratio")
     consecutive_after_hours_days: Optional[int] = Field(default=None, description="Consecutive days with after-hours activity")
+
+    # Communication and messaging metrics
+    total_msgs_sent: Optional[int] = Field(default=None, description="Total communication messages sent")
+    msgs_sent_after_hours: Optional[int] = Field(default=None, description="Messages sent outside configured shift hours")
+    msgs_sent_late_night: Optional[int] = Field(default=None, description="Messages sent during late night window")
+    first_msg_time: Optional[str] = Field(default=None, description="Local time of first sent message (HH:MM)")
+    last_msg_time: Optional[str] = Field(default=None, description="Local time of last sent message (HH:MM)")
+
+    # Metadata and labels
+    profile: Optional[str] = Field(default=None, description="Employee role / profile identifier")
+    state: Optional[str] = Field(default=None, description="Employee state label (e.g. self-reported stress, burnout)")

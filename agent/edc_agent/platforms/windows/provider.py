@@ -127,7 +127,9 @@ class WindowsInputProvider(InputProvider):
         count as corrections; repeats of char/other are collapsed.
         """
         now_utc = datetime.now(timezone.utc)
+        is_enter = False
         try:
+            is_enter = (key == Key.enter)
             kind = self._classify_key(key)
         finally:
             del key  # Non-negotiable privacy: discard raw key object immediately
@@ -150,7 +152,7 @@ class WindowsInputProvider(InputProvider):
 
             # Initial key press
             self._held_non_modifier = kind
-            self.emit(ActivityEvent(ts_utc=now_utc, kind=kind))
+            self.emit(ActivityEvent(ts_utc=now_utc, kind=kind, is_enter=True if is_enter else None))
 
     def _on_release(self, key: Any) -> None:
         """Keyboard release callback. Resets held key tracking."""

@@ -177,6 +177,9 @@ def build_rollup_daily(
     late_night_window: str = "22:00-05:00",
     after_hours_day_min: int = 30,
     late_night_min: int = 10,
+    comm_metrics: Optional[Dict[str, Any]] = None,
+    profile: Optional[str] = None,
+    state: Optional[str] = None,
     **session_kwargs,
 ) -> RollupDaily:
     """Aggregate a day's event timeline into a validated RollupDaily instance."""
@@ -217,7 +220,12 @@ def build_rollup_daily(
         "low_coverage": low_coverage,
         **sess_metrics,
         **work_metrics,
+        **(comm_metrics or {}),
     }
+    if profile is not None:
+        payload["profile"] = profile
+    if state is not None:
+        payload["state"] = state
 
     valid_payload = {k: v for k, v in payload.items() if k in RollupDaily.model_fields}
     return RollupDaily(**valid_payload)

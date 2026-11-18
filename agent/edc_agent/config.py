@@ -3,7 +3,7 @@
 Loads default_config.toml, merges user/per-person overrides, and enforces validation with Pydantic.
 """
 from pathlib import Path
-from typing import Optional, Union
+from typing import List, Optional, Union
 import tomllib
 import zoneinfo
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -64,6 +64,19 @@ class EDCConfig(BaseModel):
     after_hours_day_min: int = Field(default=30, description="Active after-hours minutes to set daily flag")
     late_night_min: int = Field(default=10, description="Active minutes in late-night window to set flag")
     no_lunch_break_min: int = Field(default=15, description="Threshold below which lunch is deemed skipped")
+
+    # Communication tracking thresholds
+    comm_apps: List[str] = Field(
+        default_factory=lambda: [
+            "slack", "teams", "ms-teams", "outlook", "thunderbird",
+            "discord", "whatsapp", "telegram", "signal", "skype", "zoom", "element"
+        ],
+        description="Process executable name patterns identifying communication apps",
+    )
+    profile: Optional[str] = Field(
+        default=None,
+        description="Configured employee role or profile identifier",
+    )
 
     @field_validator("timezone")
     @classmethod
