@@ -47,7 +47,15 @@ CATEGORY_MAPPINGS: Dict[str, List[str]] = {
     ],
 }
 
-# Ordered list of all 31 core numerical features
+# BAT-12 Survey Dimensions from Schaufeli et al.
+BAT_METRIC_COLUMNS: List[str] = [
+    "bat_q1", "bat_q2", "bat_q3", "bat_q4", "bat_q5", "bat_q6",
+    "bat_q7", "bat_q8", "bat_q9", "bat_q10", "bat_q11", "bat_q12",
+    "bat_exhaustion", "bat_mental_distance", "bat_emotional_impairment",
+    "bat_cognitive_impairment", "bat_total_score", "bat_verified_stress_day",
+]
+
+# Ordered list of all 31 core numerical telemetry features
 CORE_NUMERICAL_FEATURES: List[str] = [
     feat for cat_features in CATEGORY_MAPPINGS.values() for feat in cat_features
 ]
@@ -63,17 +71,22 @@ INT_TO_STATUS: Dict[int, str] = {v: k for k, v in STATUS_TO_INT.items()}
 
 @dataclass
 class BaselineStats:
-    """Stores personal median and MAD for an employee."""
+    """Stores personal median and MAD for an employee, plus BAT-12 calibration metrics."""
     medians: Dict[str, float]
     mads: Dict[str, float]
     sample_count: int
+    bat_baseline_score: Optional[float] = None
+    bat_baseline_exhaustion: Optional[float] = None
+    bat_baseline_cognitive: Optional[float] = None
+    bat_baseline_status: Optional[str] = None
+    is_baseline_stressed: Optional[bool] = None
 
 
 class PersonalBaselineTransformer:
     """Normalizes employee behavioral metrics against their personal 14-day baseline using Median and MAD.
 
     In WorkSense:
-    - Days 1-14: Baseline calibration phase (insufficient data for predictions).
+    - Days 1-14: Baseline calibration phase with daily BAT-12 survey check-ins.
     - Days 15+: Robust z-score deviation relative to individual's own baseline:
         z = (x - median_14d) / (1.4826 * MAD_14d + eps)
     """
@@ -119,7 +132,47 @@ class PersonalBaselineTransformer:
             medians[col] = med
             mads[col] = mad
 
-        stats = BaselineStats(medians=medians, mads=mads, sample_count=len(baseline_df))
+        # Fit BAT-12 psychological baseline if available
+        bat_score = None
+        bat_ex = None
+        bat_cog = None
+        bat_status = None
+        is_stressed = None
+
+        if "bat_total_score" in baseline_df.columns:
+            bat_series = pd.to_numeric(baseline_df["bat_total_score"], errors="coerce").dropna()
+            if len(bat_series) > 0:
+                bat_score = round(float(bat_series.mean()), 2)
+                if bat_score >= 3.65:
+                    bat_status = "Red"
+                elif bat_score >= 3.02:
+                    bat_status = "Orange"
+                elif bat_score >= 2.59:
+                    bat_status = "Yellow"
+                else:
+                    bat_status = "Green"
+                is_stressed = bool(bat_score >= 2.59)
+
+        if "bat_exhaustion" in baseline_df.columns:
+            ex_series = pd.to_numeric(baseline_df["bat_exhaustion"], errors="coerce").dropna()
+            if len(ex_series) > 0:
+                bat_ex = round(float(ex_series.mean()), 2)
+
+        if "bat_cognitive_impairment" in baseline_df.columns:
+            cog_series = pd.to_numeric(baseline_df["bat_cognitive_impairment"], errors="coerce").dropna()
+            if len(cog_series) > 0:
+                bat_cog = round(float(cog_series.mean()), 2)
+
+        stats = BaselineStats(
+            medians=medians,
+            mads=mads,
+            sample_count=len(baseline_df),
+            bat_baseline_score=bat_score,
+            bat_baseline_exhaustion=bat_ex,
+            bat_baseline_cognitive=bat_cog,
+            bat_baseline_status=bat_status,
+            is_baseline_stressed=is_stressed,
+        )
         return stats
 
     def transform_employee(
@@ -157,31 +210,22 @@ class PersonalBaselineTransformer:
         target_col: str = "target_burnout_status_5d",
         risk_col: str = "target_burnout_risk_5d",
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List[Dict[str, Any]]]:
-        """Extract 7-day sliding window sequences and 5-day forward targets.
-
-        Returns:
-            X: np.ndarray of shape (N_samples, sequence_length, n_features)
-            y_class: np.ndarray of shape (N_samples,) with integer labels (0 to 3)
-            y_risk: np.ndarray of shape (N_samples,) with float risks (0.0 to 1.0)
-            meta: List of metadata dicts (employee_id, date, status, etc.)
-        """
+        """Extract 7-day sliding window sequences and 5-day forward targets."""
         norm_cols = [f"{col}_norm" for col in self.features]
         X_list: List[np.ndarray] = []
         y_class_list: List[int] = []
         y_risk_list: List[float] = []
         meta_list: List[Dict[str, Any]] = []
 
-        # Process each employee separately
         for emp_id, emp_df in df.groupby("employee_id"):
             emp_sorted = emp_df.sort_values("date").reset_index(drop=True)
             if len(emp_sorted) < (self.baseline_days + self.sequence_length):
                 continue
 
-            # Ensure normalized columns exist
+            baseline = self.fit_employee_baseline(emp_sorted)
             if norm_cols[0] not in emp_sorted.columns:
-                emp_sorted = self.transform_employee(emp_sorted)
+                emp_sorted = self.transform_employee(emp_sorted, baseline=baseline)
 
-            # Only sample from baseline_days onwards (days 15+)
             for end_idx in range(self.baseline_days, len(emp_sorted)):
                 start_idx = end_idx - self.sequence_length + 1
                 if start_idx < 0:
@@ -190,7 +234,6 @@ class PersonalBaselineTransformer:
                 seq_df = emp_sorted.iloc[start_idx : end_idx + 1]
                 target_row = emp_sorted.iloc[end_idx]
 
-                # Check if target is valid
                 status_str = target_row.get(target_col)
                 if pd.isna(status_str) or status_str not in STATUS_TO_INT:
                     continue
@@ -200,9 +243,7 @@ class PersonalBaselineTransformer:
                     continue
 
                 seq_features = seq_df[norm_cols].to_numpy(dtype=np.float32)
-                if np.isnan(seq_features).any():
-                    # Handle any edge nan
-                    seq_features = np.nan_to_num(seq_features, nan=0.0)
+                seq_features = np.nan_to_num(seq_features, nan=0.0)
 
                 X_list.append(seq_features)
                 y_class_list.append(STATUS_TO_INT[status_str])
@@ -215,6 +256,9 @@ class PersonalBaselineTransformer:
                     "current_status": target_row.get("current_burnout_status", "Green"),
                     "target_status": status_str,
                     "target_risk": float(risk_val),
+                    "baseline_bat_score": baseline.bat_baseline_score if baseline else None,
+                    "baseline_bat_status": baseline.bat_baseline_status if baseline else None,
+                    "today_bat_score": float(target_row.get("bat_total_score", 0.0)) if "bat_total_score" in target_row else None,
                 })
 
         if not X_list:

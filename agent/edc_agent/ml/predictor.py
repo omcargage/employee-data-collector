@@ -88,6 +88,15 @@ class WorkSenseBurnoutPredictor:
         n_days = len(df)
         emp_id = str(df["employee_id"].iloc[0]) if n_days > 0 and "employee_id" in df else "UNKNOWN"
 
+        # Check BAT-12 survey check-ins in available history
+        bat_completed = 0
+        bat_mean = None
+        if "bat_total_score" in df.columns:
+            valid_bat = df["bat_total_score"].dropna()
+            bat_completed = len(valid_bat)
+            if bat_completed > 0:
+                bat_mean = round(float(valid_bat.mean()), 2)
+
         # 1. Check WorkSense 14-day calibration rule
         if n_days < self.transformer.baseline_days:
             return {
@@ -99,11 +108,13 @@ class WorkSenseBurnoutPredictor:
                     "days_collected": n_days,
                     "days_required": self.transformer.baseline_days,
                     "progress_pct": round((n_days / self.transformer.baseline_days) * 100, 1),
+                    "bat12_checkins_completed": bat_completed,
+                    "bat12_interim_score": bat_mean,
                 },
                 "risk_score": None,
                 "confidence": None,
                 "probabilities": None,
-                "explanation": f"Personal baseline calibrating: Day {n_days} of {self.transformer.baseline_days} complete.",
+                "explanation": f"Personal baseline calibrating: Day {n_days} of {self.transformer.baseline_days} complete (BAT-12 surveys: {bat_completed}/{n_days}).",
                 "drivers": [],
             }
 
@@ -114,7 +125,6 @@ class WorkSenseBurnoutPredictor:
         # 3. Extract 7-day temporal window
         seq_len = self.transformer.sequence_length
         if len(norm_df) < seq_len:
-            # Fallback pad with first day if exactly 14 days
             pad_needed = seq_len - len(norm_df)
             pad_rows = pd.concat([norm_df.iloc[[0]] * 0] * pad_needed, ignore_index=True)
             norm_df = pd.concat([pad_rows, norm_df], ignore_index=True)
@@ -144,6 +154,10 @@ class WorkSenseBurnoutPredictor:
             "Red": "Severe behavioral disruption and sustained fatigue patterns. Immediate intervention recommended.",
         }
 
+        # Today's BAT score if available
+        today_row = df.iloc[-1]
+        today_bat = float(today_row["bat_total_score"]) if "bat_total_score" in today_row and not pd.isna(today_row["bat_total_score"]) else None
+
         return {
             "employee_id": emp_id,
             "date": str(df["date"].iloc[-1]),
@@ -152,6 +166,15 @@ class WorkSenseBurnoutPredictor:
             "confidence": round(confidence, 3),
             "risk_score": round(risk_scalar, 3),
             "status_description": status_guidance.get(pred_status, ""),
+            "baseline_verification": {
+                "baseline_days": self.transformer.baseline_days,
+                "baseline_bat_score": baseline_stats.bat_baseline_score if baseline_stats else None,
+                "baseline_bat_status": baseline_stats.bat_baseline_status if baseline_stats else None,
+                "baseline_exhaustion": baseline_stats.bat_baseline_exhaustion if baseline_stats else None,
+                "baseline_cognitive": baseline_stats.bat_baseline_cognitive if baseline_stats else None,
+                "is_baseline_stressed": baseline_stats.is_baseline_stressed if baseline_stats else False,
+            },
+            "today_bat_score": today_bat,
             "class_probabilities": {
                 INT_TO_STATUS[i]: round(float(probs[i]), 3) for i in range(4)
             },

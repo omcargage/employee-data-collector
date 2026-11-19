@@ -1,14 +1,59 @@
-"""Self-report module for voluntary end-of-day employee check-ins.
+"""Self-report module for voluntary end-of-day employee check-ins and BAT-12 survey.
 
-Captures 1-5 Likert scale ratings for stress, energy, and workload, mapped to a logical day.
-Stores responses in SQLite self_reports for export alongside behavioural features.
+Implements the Burnout Assessment Tool (BAT-12 short version) with 4 core dimensions:
+1. Exhaustion (Items 1-3)
+2. Mental Distance / Disengagement (Items 4-6)
+3. Emotional Impairment (Items 7-9)
+4. Cognitive Impairment (Items 10-12)
+
+Each item is scored on a 1-5 Likert scale (1=Never, 2=Rarely, 3=Sometimes, 4=Often, 5=Always).
+Calculates subscale scores, overall BAT-12 score, and clinical cutoff status.
 """
+from dataclasses import asdict, dataclass
 from datetime import date, datetime, timezone
 import json
-from typing import Dict, Optional, Tuple
 import sys
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from edc_agent.storage.database import Database
+
+# BAT-12 Item Definitions from Schaufeli et al.
+BAT12_QUESTIONS: List[Dict[str, Any]] = [
+    {"id": 1, "key": "bat_q1", "dimension": "exhaustion", "text": "At work, I feel mentally exhausted"},
+    {"id": 2, "key": "bat_q2", "dimension": "exhaustion", "text": "After a day at work, I find it hard to recover my energy"},
+    {"id": 3, "key": "bat_q3", "dimension": "exhaustion", "text": "At work, I feel physically exhausted"},
+    {"id": 4, "key": "bat_q4", "dimension": "mental_distance", "text": "I struggle to find any enthusiasm for my work"},
+    {"id": 5, "key": "bat_q5", "dimension": "mental_distance", "text": "I feel a strong aversion towards my job"},
+    {"id": 6, "key": "bat_q6", "dimension": "mental_distance", "text": "I'm cynical about what my work means to others"},
+    {"id": 7, "key": "bat_q7", "dimension": "emotional_impairment", "text": "At work, I feel unable to control my emotions"},
+    {"id": 8, "key": "bat_q8", "dimension": "emotional_impairment", "text": "I do not recognize myself in the way I react emotionally at work"},
+    {"id": 9, "key": "bat_q9", "dimension": "emotional_impairment", "text": "At work I may overreact unintentionally"},
+    {"id": 10, "key": "bat_q10", "dimension": "cognitive_impairment", "text": "At work, I have trouble staying focused"},
+    {"id": 11, "key": "bat_q11", "dimension": "cognitive_impairment", "text": "When I'm working, I have trouble concentrating"},
+    {"id": 12, "key": "bat_q12", "dimension": "cognitive_impairment", "text": "I make mistakes in my work because I have my mind on other things"},
+]
+
+LIKERT_LABELS = {
+    1: "Never",
+    2: "Rarely",
+    3: "Sometimes",
+    4: "Often",
+    5: "Always",
+}
+
+
+@dataclass
+class BAT12Summary:
+    """Aggregated scores for a completed BAT-12 questionnaire."""
+    logical_day: str
+    items: Dict[str, int]
+    exhaustion_score: float
+    mental_distance_score: float
+    emotional_impairment_score: float
+    cognitive_impairment_score: float
+    total_bat_score: float
+    verified_stressed_day: bool
+    clinical_status: str
 
 
 def validate_rating(name: str, value: int) -> int:
@@ -18,6 +63,177 @@ def validate_rating(name: str, value: int) -> int:
     return value
 
 
+def compute_bat12_scores(items: Dict[str, int], logical_day: Optional[date] = None) -> BAT12Summary:
+    """Compute subscales, total mean, clinical cutoff status, and stress verification flag."""
+    day_str = (logical_day or datetime.now(timezone.utc).date()).isoformat()
+
+    # Validate all 12 items
+    validated_items: Dict[str, int] = {}
+    for i in range(1, 13):
+        k = f"bat_q{i}"
+        if k not in items:
+            raise ValueError(f"Missing required BAT-12 item: {k}")
+        validated_items[k] = validate_rating(k, int(items[k]))
+
+    ex_score = (validated_items["bat_q1"] + validated_items["bat_q2"] + validated_items["bat_q3"]) / 3.0
+    md_score = (validated_items["bat_q4"] + validated_items["bat_q5"] + validated_items["bat_q6"]) / 3.0
+    ei_score = (validated_items["bat_q7"] + validated_items["bat_q8"] + validated_items["bat_q9"]) / 3.0
+    ci_score = (validated_items["bat_q10"] + validated_items["bat_q11"] + validated_items["bat_q12"]) / 3.0
+    total_score = sum(validated_items.values()) / 12.0
+
+    # Clinical cutoff norms (Schaufeli et al. standard BAT guidelines)
+    # < 2.59: Green (low risk)
+    # 2.59 - 3.01: Yellow (caution / mild)
+    # 3.02 - 3.64: Orange (elevated / warning)
+    # >= 3.65: Red (severe burnout risk)
+    if total_score >= 3.65:
+        clinical_status = "Red"
+    elif total_score >= 3.02:
+        clinical_status = "Orange"
+    elif total_score >= 2.59:
+        clinical_status = "Yellow"
+    else:
+        clinical_status = "Green"
+
+    # Daily verified stress flag: True if total >= 3.02 or exhaustion >= 3.33
+    is_stressed = bool(total_score >= 3.02 or ex_score >= 3.33)
+
+    return BAT12Summary(
+        logical_day=day_str,
+        items=validated_items,
+        exhaustion_score=round(ex_score, 3),
+        mental_distance_score=round(md_score, 3),
+        emotional_impairment_score=round(ei_score, 3),
+        cognitive_impairment_score=round(ci_score, 3),
+        total_bat_score=round(total_score, 3),
+        verified_stressed_day=is_stressed,
+        clinical_status=clinical_status,
+    )
+
+
+def record_bat12_checkin(
+    db: Database,
+    logical_day: date,
+    items: Dict[str, int],
+) -> BAT12Summary:
+    """Store complete BAT-12 questionnaire response in SQLite self_reports."""
+    summary = compute_bat12_scores(items=items, logical_day=logical_day)
+    now_utc = datetime.now(timezone.utc).isoformat()
+    day_iso = logical_day.isoformat()
+
+    payload = asdict(summary)
+    db.insert_self_report(ts_utc=now_utc, label="bat12", value=json.dumps(payload))
+
+    # Also insert indexed summary key for fast joins
+    db.insert_self_report(ts_utc=now_utc, label=f"bat12:{day_iso}:total", value=str(summary.total_bat_score))
+    db.insert_self_report(ts_utc=now_utc, label=f"bat12:{day_iso}:status", value=summary.clinical_status)
+    db.insert_self_report(ts_utc=now_utc, label=f"bat12:{day_iso}:stressed", value="1" if summary.verified_stressed_day else "0")
+
+    return summary
+
+
+def get_bat12_for_day(db: Database, logical_day: date) -> Optional[BAT12Summary]:
+    """Retrieve BAT-12 record for a given day, if completed."""
+    day_iso = logical_day.isoformat()
+    rows = db.get_self_reports()
+    for row in reversed(rows):
+        if row["label"] == "bat12":
+            try:
+                data = json.loads(row["value"])
+                if data.get("logical_day") == day_iso:
+                    return BAT12Summary(**data)
+            except Exception:
+                continue
+    return None
+
+
+def get_all_bat12_by_day(db: Database) -> Dict[str, BAT12Summary]:
+    """Retrieve all BAT-12 records mapped by logical_day YYYY-MM-DD."""
+    results: Dict[str, BAT12Summary] = {}
+    rows = db.get_self_reports()
+    for row in rows:
+        if row["label"] == "bat12":
+            try:
+                data = json.loads(row["value"])
+                d_str = data.get("logical_day")
+                if d_str:
+                    results[d_str] = BAT12Summary(**data)
+            except Exception:
+                continue
+    return results
+
+
+def prompt_bat12_checkin(
+    db: Database,
+    logical_day: Optional[date] = None,
+    ratings: Optional[Dict[str, int]] = None,
+    skip: bool = False,
+) -> Optional[BAT12Summary]:
+    """Prompt the user for end-of-day BAT-12 check-in.
+
+    Supports direct ratings dictionary (for automated testing or UI submission)
+    or interactive terminal prompting.
+    """
+    target_day = logical_day or datetime.now(timezone.utc).date()
+
+    if skip:
+        sys.stdout.write("[EDC] BAT-12 check-in skipped.\n")
+        sys.stdout.flush()
+        return None
+
+    if ratings is not None:
+        summary = record_bat12_checkin(db, target_day, items=ratings)
+        sys.stdout.write(
+            f"[EDC] BAT-12 recorded for {target_day.isoformat()}: "
+            f"score={summary.total_bat_score:.2f} ({summary.clinical_status})\n"
+        )
+        sys.stdout.flush()
+        return summary
+
+    sys.stdout.write("\n" + "=" * 75 + "\n")
+    sys.stdout.write(f"     END-OF-DAY BURNOUT ASSESSMENT (BAT-12) - {target_day.isoformat()}\n")
+    sys.stdout.write("  Instruction: How often has each statement applied to you today?\n")
+    sys.stdout.write("  Scoring: 1=Never | 2=Rarely | 3=Sometimes | 4=Often | 5=Always\n")
+    sys.stdout.write("  Press Enter on any prompt to skip without submitting.\n")
+    sys.stdout.write("=" * 75 + "\n")
+    sys.stdout.flush()
+
+    items: Dict[str, int] = {}
+    try:
+        for q in BAT12_QUESTIONS:
+            prompt_str = f"[{q['id']}/12] {q['text']}\n  (1=Never, 2=Rarely, 3=Sometimes, 4=Often, 5=Always): "
+            sys.stdout.write(prompt_str)
+            sys.stdout.flush()
+            val_input = sys.stdin.readline().strip()
+            if not val_input:
+                sys.stdout.write("[EDC] BAT-12 check-in skipped.\n")
+                return None
+            val = int(val_input)
+            if val < 1 or val > 5:
+                sys.stdout.write("Invalid rating (must be 1-5). Check-in cancelled.\n")
+                return None
+            items[q["key"]] = val
+
+        summary = record_bat12_checkin(db, target_day, items=items)
+        sys.stdout.write("\n" + "-" * 75 + "\n")
+        sys.stdout.write(f"  BAT-12 Check-in Complete for {target_day.isoformat()}:\n")
+        sys.stdout.write(f"  - Exhaustion Subscale:          {summary.exhaustion_score:.2f} / 5.0\n")
+        sys.stdout.write(f"  - Mental Distance Subscale:     {summary.mental_distance_score:.2f} / 5.0\n")
+        sys.stdout.write(f"  - Emotional Impairment:         {summary.emotional_impairment_score:.2f} / 5.0\n")
+        sys.stdout.write(f"  - Cognitive Impairment:         {summary.cognitive_impairment_score:.2f} / 5.0\n")
+        sys.stdout.write(f"  - Total Overall Score:          {summary.total_bat_score:.2f} / 5.0\n")
+        sys.stdout.write(f"  - Status Category:              {summary.clinical_status}\n")
+        sys.stdout.write(f"  - Day Stress Verified:          {'YES (Elevated)' if summary.verified_stressed_day else 'NO (Normal)'}\n")
+        sys.stdout.write("-" * 75 + "\n")
+        sys.stdout.flush()
+        return summary
+    except (ValueError, EOFError, KeyboardInterrupt):
+        sys.stdout.write("\n[EDC] Check-in cancelled.\n")
+        sys.stdout.flush()
+        return None
+
+
+# Legacy 3-item check-in functions for backwards compatibility
 def record_checkin(
     db: Database,
     logical_day: date,
@@ -33,7 +249,6 @@ def record_checkin(
     now_utc = datetime.now(timezone.utc).isoformat()
     day_iso = logical_day.isoformat()
 
-    # Store combined check-in payload
     payload = {
         "logical_day": day_iso,
         "stress": stress_val,
@@ -41,15 +256,12 @@ def record_checkin(
         "workload": workload_val,
     }
     db.insert_self_report(ts_utc=now_utc, label="checkin", value=json.dumps(payload))
-
-    # Store individual label rows for flexible queries
     db.insert_self_report(ts_utc=now_utc, label=f"checkin:{day_iso}:stress", value=str(stress_val))
     db.insert_self_report(ts_utc=now_utc, label=f"checkin:{day_iso}:energy", value=str(energy_val))
     db.insert_self_report(ts_utc=now_utc, label=f"checkin:{day_iso}:workload", value=str(workload_val))
 
 
 def get_checkin_for_day(db: Database, logical_day: date) -> Optional[Dict[str, int]]:
-    """Retrieve the check-in ratings for a specific logical day, if present."""
     day_iso = logical_day.isoformat()
     rows = db.get_self_reports()
     for row in reversed(rows):
@@ -68,7 +280,6 @@ def get_checkin_for_day(db: Database, logical_day: date) -> Optional[Dict[str, i
 
 
 def get_all_checkins_by_day(db: Database) -> Dict[str, Dict[str, int]]:
-    """Retrieve all check-ins mapped by logical_day string YYYY-MM-DD."""
     results: Dict[str, Dict[str, int]] = {}
     rows = db.get_self_reports()
     for row in rows:
@@ -93,61 +304,11 @@ def prompt_checkin(
     ratings: Optional[Tuple[int, int, int]] = None,
     skip: bool = False,
 ) -> bool:
-    """Prompt the user for an end-of-day check-in. Skippable on empty input.
-
-    Returns True if submitted, False if skipped.
-    """
     target_day = logical_day or datetime.now(timezone.utc).date()
-
     if skip:
-        sys.stdout.write("[EDC] End-of-day check-in skipped.\n")
-        sys.stdout.flush()
         return False
-
     if ratings is not None:
         s, e, w = ratings
         record_checkin(db, target_day, stress=s, energy=e, workload=w)
-        sys.stdout.write(f"[EDC] Check-in for {target_day.isoformat()} recorded: stress={s}, energy={e}, workload={w}.\n")
-        sys.stdout.flush()
         return True
-
-    sys.stdout.write("\n======================================================================\n")
-    sys.stdout.write(f"           END-OF-DAY CHECK-IN ({target_day.isoformat()})\n")
-    sys.stdout.write("  Rate each item on a 1-5 scale (1=Lowest, 5=Highest).\n")
-    sys.stdout.write("  Press Enter on any prompt to skip without submitting.\n")
-    sys.stdout.write("======================================================================\n")
-    sys.stdout.flush()
-
-    try:
-        sys.stdout.write("1. Stress level (1-5, Enter to skip): ")
-        sys.stdout.flush()
-        s_input = sys.stdin.readline().strip()
-        if not s_input:
-            sys.stdout.write("[EDC] Check-in skipped.\n")
-            return False
-        stress = int(s_input)
-
-        sys.stdout.write("2. Energy level (1-5, Enter to skip): ")
-        sys.stdout.flush()
-        e_input = sys.stdin.readline().strip()
-        if not e_input:
-            sys.stdout.write("[EDC] Check-in skipped.\n")
-            return False
-        energy = int(e_input)
-
-        sys.stdout.write("3. Workload level (1-5, Enter to skip): ")
-        sys.stdout.flush()
-        w_input = sys.stdin.readline().strip()
-        if not w_input:
-            sys.stdout.write("[EDC] Check-in skipped.\n")
-            return False
-        workload = int(w_input)
-
-        record_checkin(db, target_day, stress=stress, energy=energy, workload=workload)
-        sys.stdout.write(f"[EDC] Thank you! Check-in recorded for {target_day.isoformat()}.\n")
-        sys.stdout.flush()
-        return True
-    except (ValueError, EOFError, KeyboardInterrupt):
-        sys.stdout.write("\n[EDC] Check-in skipped.\n")
-        sys.stdout.flush()
-        return False
+    return False
