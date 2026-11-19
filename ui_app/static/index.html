@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WorkSense — Early-Warning Burnout Prevention</title>
-  
+
   <!-- Font Declarations from Segoe UI Variable Style Guide -->
   <style>
     @font-face {
@@ -13,6 +14,7 @@
       font-weight: 300 700;
       font-style: normal;
     }
+
     @font-face {
       font-family: 'Segoe UI Variable Display';
       src: url('https://media.brand.dev/fonts/4c372cb2e01d890996a8ccb6cf285ff24a0542488a00e0046caf0c0703d4302a.woff2') format('woff2');
@@ -49,6 +51,7 @@
       letter-spacing: -1.2px;
       margin: 0;
     }
+
     h2 {
       font-family: var(--font-display);
       font-size: 28px;
@@ -57,6 +60,7 @@
       letter-spacing: -0.8px;
       margin: 0;
     }
+
     h3 {
       font-family: var(--font-display);
       font-size: 20px;
@@ -65,6 +69,7 @@
       letter-spacing: -0.3px;
       margin: 0;
     }
+
     h4 {
       font-family: var(--font-text);
       font-size: 17px;
@@ -100,9 +105,11 @@
       min-height: 40px;
       text-decoration: none;
     }
+
     .ws-btn-primary:hover {
       background-color: #0060aa;
     }
+
     .ws-btn-primary:active {
       transform: scale(0.98);
     }
@@ -125,6 +132,7 @@
       min-height: 40px;
       text-decoration: none;
     }
+
     .ws-btn-secondary:hover {
       background-color: #f3f4f6;
     }
@@ -143,6 +151,7 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
+
 <body>
   <div id="root"></div>
 
@@ -292,21 +301,19 @@
               <div className="flex items-center bg-gray-100 p-1 rounded-full border border-gray-200">
                 <button
                   onClick={() => setViewRole("employee")}
-                  className={`px-5 py-1.5 rounded-full text-sm font-semibold transition-all ${
-                    viewRole === "employee"
-                      ? "bg-[#0078d4] text-white shadow-sm"
-                      : "text-gray-700 hover:text-black"
-                  }`}
+                  className={`px-5 py-1.5 rounded-full text-sm font-semibold transition-all ${viewRole === "employee"
+                    ? "bg-[#0078d4] text-white shadow-sm"
+                    : "text-gray-700 hover:text-black"
+                    }`}
                 >
                   Employee Portal
                 </button>
                 <button
                   onClick={() => setViewRole("manager")}
-                  className={`px-5 py-1.5 rounded-full text-sm font-semibold transition-all ${
-                    viewRole === "manager"
-                      ? "bg-[#0078d4] text-white shadow-sm"
-                      : "text-gray-700 hover:text-black"
-                  }`}
+                  className={`px-5 py-1.5 rounded-full text-sm font-semibold transition-all ${viewRole === "manager"
+                    ? "bg-[#0078d4] text-white shadow-sm"
+                    : "text-gray-700 hover:text-black"
+                    }`}
                 >
                   Manager / Employer Portal
                 </button>
@@ -323,9 +330,8 @@
                     style={{ backgroundColor: isDemoMode ? "#0078d4" : "#107c41" }}
                   >
                     <div
-                      className={`w-3 h-3 bg-white rounded-full shadow-md transform transition-transform ${
-                        isDemoMode ? "translate-x-4" : "translate-x-0"
-                      }`}
+                      className={`w-3 h-3 bg-white rounded-full shadow-md transform transition-transform ${isDemoMode ? "translate-x-4" : "translate-x-0"
+                        }`}
                     />
                   </button>
                   <span className={isDemoMode ? "text-[#0078d4] font-semibold" : "text-gray-400"}>Demo Profiles</span>
@@ -380,7 +386,7 @@
 
           {/* Footer Privacy Guarantee */}
           <footer className="border-t border-gray-200 bg-white py-4 px-6 text-center text-xs text-gray-500">
-            WorkSense — Built as an interdisciplinary research project at FLAME University, Pune. 
+            WorkSense — Built as an interdisciplinary research project at FLAME University, Pune.
             <span className="ml-2 font-medium text-gray-700">Strict Zero-Identification Privacy Standard (No keystroke logging, no window titles, no text content).</span>
           </footer>
         </div>
@@ -460,7 +466,7 @@
                     Day {calibration_progress.days_collected} of {calibration_progress.days_required} Completed
                   </h3>
                   <p className="text-sm text-gray-600 mt-1 max-w-2xl">
-                    WorkSense is establishing your personal work baseline (typing pace, session stretches, lunch habits). 
+                    WorkSense is establishing your personal work baseline (typing pace, session stretches, lunch habits).
                     No burnout alerts or manager reports are generated during this initial 14-day calibration window.
                   </p>
                 </div>
@@ -869,11 +875,10 @@
                         key={opt.val}
                         type="button"
                         onClick={() => handleRadio(q.key, opt.val)}
-                        className={`py-1.5 px-2 text-xs rounded-xl border text-center transition-all ${
-                          responses[q.key] === opt.val
-                            ? "bg-[#0078d4] text-white border-[#0078d4] font-bold shadow-sm"
-                            : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                        }`}
+                        className={`py-1.5 px-2 text-xs rounded-xl border text-center transition-all ${responses[q.key] === opt.val
+                          ? "bg-[#0078d4] text-white border-[#0078d4] font-bold shadow-sm"
+                          : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                          }`}
                       >
                         <div>{opt.val}</div>
                         <div className="text-[10px] opacity-80">{opt.label}</div>
@@ -912,5 +917,5 @@
     ReactDOM.render(<App />, document.getElementById("root"));
   </script>
 </body>
-</html>
 
+</html>

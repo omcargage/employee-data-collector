@@ -7,7 +7,16 @@ Connects:
 - Interactive Dual-Portal Frontend (Employee & Manager)
 """
 import os
+import sys
 from pathlib import Path
+
+# Ensure agent and shared packages are always discoverable regardless of cwd
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent
+for _p in [PROJECT_ROOT / "agent", PROJECT_ROOT / "shared", PROJECT_ROOT / "backend"]:
+    if _p.exists() and str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
+
 from typing import Any, Dict, List, Optional
 from datetime import date, datetime, timezone
 import json

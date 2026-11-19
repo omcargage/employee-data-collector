@@ -7,34 +7,72 @@ No browser tabs, no address bars, 100% desktop application experience.
 import os
 import sys
 import time
+import socket
 import subprocess
 import urllib.request
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
-AGENT_DIR = BASE_DIR.parent / "agent"
+PROJECT_ROOT = BASE_DIR.parent
+AGENT_DIR = PROJECT_ROOT / "agent"
 VENV_PYTHON = AGENT_DIR / ".venv" / "Scripts" / "python.exe"
+SERVER_LOG_FILE = BASE_DIR / "server.log"
 
-SERVER_URL = "http://127.0.0.1:8000"
+for p in [AGENT_DIR, PROJECT_ROOT / "shared", PROJECT_ROOT / "backend"]:
+    if p.exists() and str(p) not in sys.path:
+        sys.path.insert(0, str(p))
+
+SERVER_HOST = "127.0.0.1"
+SERVER_PORT = 8000
+SERVER_URL = f"http://{SERVER_HOST}:{SERVER_PORT}"
 HEALTH_URL = f"{SERVER_URL}/api/health"
 
 
-def is_server_running() -> bool:
-    """Check if the WorkSense server is already responding."""
+def is_port_listening(host: str = SERVER_HOST, port: int = SERVER_PORT) -> bool:
+    """Instant socket check without proxy overhead."""
     try:
-        with urllib.request.urlopen(HEALTH_URL, timeout=1.5) as response:
-            return response.status == 200
+        with socket.create_connection((host, port), timeout=0.4):
+            return True
+    except (socket.timeout, ConnectionRefusedError, OSError):
+        return False
+
+
+def is_server_ready() -> bool:
+    """Check if the FastAPI app has completed startup."""
+    if not is_port_listening():
+        return False
+    try:
+        proxy_handler = urllib.request.ProxyHandler({})
+        opener = urllib.request.build_opener(proxy_handler)
+        with opener.open(HEALTH_URL, timeout=1.5) as resp:
+            return resp.status == 200
     except Exception:
         return False
 
 
-def wait_for_server(timeout_sec: int = 25) -> bool:
-    """Poll until the backend server is ready."""
+def wait_for_server(proc: subprocess.Popen, timeout_sec: int = 60) -> bool:
+    """Wait for server with live progress and error reporting."""
     start_time = time.time()
+    print("      Initializing PyTorch engine and neural weights", end="", flush=True)
+
     while time.time() - start_time < timeout_sec:
-        if is_server_running():
+        # Check if process terminated
+        if proc.poll() is not None:
+            print("\n[ERROR] Server process exited with code:", proc.returncode)
+            if SERVER_LOG_FILE.exists():
+                print("\nServer Log Output:\n" + SERVER_LOG_FILE.read_text(encoding="utf-8", errors="replace"))
+            return False
+
+        if is_server_ready():
+            print(" [READY]")
             return True
-        time.sleep(0.5)
+
+        print(".", end="", flush=True)
+        time.sleep(1.0)
+
+    print("\n[ERROR] Timeout waiting for server startup.")
+    if SERVER_LOG_FILE.exists():
+        print("\nLast server log:\n" + SERVER_LOG_FILE.read_text(encoding="utf-8", errors="replace")[-500:])
     return False
 
 
@@ -53,57 +91,86 @@ def find_browser_app_binary():
     return None
 
 
-def run_standalone_app(prefer_native: bool = True):
-    """Launch the app in a standalone window."""
-    # 1. Try pywebview for genuine native Windows frame
-    if prefer_native:
-        try:
-            import webview
-            window = webview.create_window(
-                title="WorkSense — Early-Warning Burnout Prevention",
-                url=SERVER_URL,
-                width=1340,
-                height=880,
-                min_size=(1024, 700),
-                resizable=True,
-                text_select=True,
-                confirm_close=False,
-            )
-            webview.start()
-            return
-        except Exception as e:
-            print(f"[Notice] Native webview: {e}. Launching standalone App Mode...")
-
-    # 2. Chrome / Edge dedicated App Mode (--app=URL)
+def launch_window():
+    """Launch dedicated desktop window using Chrome/Edge app mode or pywebview."""
     browser_exe = find_browser_app_binary()
     if browser_exe:
-        subprocess.Popen([browser_exe, f"--app={SERVER_URL}", "--window-size=1340,880"])
+        print(f"      Launching standalone app container ({Path(browser_exe).stem})...")
+        subprocess.Popen([
+            browser_exe,
+            f"--app={SERVER_URL}",
+            "--window-size=1360,880",
+            "--app-auto-launched"
+        ])
         return
 
-    # 3. Fallback to default handler
+    # Fallback: pywebview
+    try:
+        import webview
+        window = webview.create_window(
+            title="WorkSense — Early-Warning Burnout Prevention",
+            url=SERVER_URL,
+            width=1340,
+            height=880,
+            min_size=(1024, 700),
+            resizable=True,
+            text_select=True,
+        )
+        webview.start()
+        return
+    except Exception as e:
+        print(f"[Notice] webview: {e}")
+
+    # Fallback to default
     os.system(f'start "" "{SERVER_URL}"')
 
 
 def main():
     print("=" * 60)
-    print("  WorkSense — Early-Warning Burnout Prevention")
+    print("  WorkSense - Early-Warning Burnout Prevention")
     print("  Desktop Application Launcher")
     print("=" * 60)
 
-    # 1. Start server if not already running
     server_process = None
-    if not is_server_running():
+    log_fp = None
+
+    if not is_server_ready():
         print("[1/2] Starting backend engine & neural network...")
         py_exe = str(VENV_PYTHON) if VENV_PYTHON.exists() else sys.executable
+
+        env = os.environ.copy()
+        python_paths = [str(PROJECT_ROOT / "agent"), str(PROJECT_ROOT / "shared"), str(BASE_DIR)]
+        env["PYTHONPATH"] = os.pathsep.join(python_paths)
+
+        # Redirect to log file to avoid pipe buffer deadlocks
+        log_fp = open(SERVER_LOG_FILE, "w", encoding="utf-8")
+
         server_process = subprocess.Popen(
-            [py_exe, "-m", "uvicorn", "server:app", "--app-dir", str(BASE_DIR), "--host", "127.0.0.1", "--port", "8000", "--log-level", "warning"],
+            [
+                py_exe,
+                "-m",
+                "uvicorn",
+                "server:app",
+                "--app-dir",
+                str(BASE_DIR),
+                "--host",
+                SERVER_HOST,
+                "--port",
+                str(SERVER_PORT),
+                "--log-level",
+                "info",
+            ],
             cwd=str(BASE_DIR),
+            env=env,
+            stdout=log_fp,
+            stderr=subprocess.STDOUT,
         )
-        print("      Waiting for server initialization...")
-        if not wait_for_server(timeout_sec=25):
-            print("[ERROR] Server failed to start within timeout.")
+
+        if not wait_for_server(server_process, timeout_sec=60):
             if server_process:
                 server_process.terminate()
+            if log_fp:
+                log_fp.close()
             sys.exit(1)
         print("      Backend ready.")
     else:
@@ -111,16 +178,22 @@ def main():
 
     # 2. Launch dedicated desktop window
     print("[2/2] Launching WorkSense Desktop App window...")
-    # Prefer Chrome App Mode for ultra-fast GPU acceleration and crisp Segoe UI rendering
-    browser_exe = find_browser_app_binary()
-    if browser_exe:
-        print(f"      Launching standalone app container ({Path(browser_exe).stem})...")
-        subprocess.Popen([browser_exe, f"--app={SERVER_URL}", "--window-size=1360,880"])
-    else:
-        run_standalone_app(prefer_native=True)
+    launch_window()
 
-    print("\n  WorkSense is running in its own standalone window.")
-    print("  Close the application window or press CTRL+C to exit.\n")
+    print("\n" + "=" * 60)
+    print("  WorkSense is running in its own standalone window.")
+    print("  Close this window or press CTRL+C to stop the application.")
+    print("=" * 60 + "\n")
+
+    if server_process:
+        try:
+            server_process.wait()
+        except KeyboardInterrupt:
+            print("\nShutting down WorkSense...")
+            server_process.terminate()
+        finally:
+            if log_fp:
+                log_fp.close()
 
 
 if __name__ == "__main__":
