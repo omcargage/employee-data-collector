@@ -1,24 +1,29 @@
 @echo off
-title WorkSense — Burnout Prevention Platform
+title WorkSense — Early-Warning Burnout Prevention
 echo.
-echo   WorkSense — Early-Warning Burnout Prevention
-echo   FLAME University Research Prototype
-echo   ---------------------------------------------
+echo  ██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗███████╗███████╗███╗   ██╗███████╗███████╗
+echo  ██║    ██║██╔═══██╗██╔══██╗██║ ██╔╝██╔════╝██╔════╝████╗  ██║██╔════╝██╔════╝
+echo  ██║ █╗ ██║██║   ██║██████╔╝█████╔╝ ███████╗█████╗  ██╔██╗ ██║███████╗█████╗  
+echo  ██║███╗██║██║   ██║██╔══██╗██╔═██╗ ╚════██║██╔══╝  ██║╚██╗██║╚════██║██╔══╝  
+echo  ╚███╔███╔╝╚██████╔╝██║  ██║██║  ██╗███████║███████╗██║ ╚████║███████║███████╗
+echo   ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚══════╝╚═╝  ╚═══╝╚══════╝╚══════╝
+echo.
+echo  WorkSense Desktop Application — FLAME University Research Prototype
+echo  -------------------------------------------------------------------
 echo.
 
 cd /d "%~dp0"
 
+REM Check if venv Python exists
 set PYTHON="..\agent\.venv\Scripts\python.exe"
-
 if not exist %PYTHON% (
-    echo [ERROR] Python venv not found. Run setup first.
-    pause & exit /b 1
+    echo [ERROR] Python venv not found at agent\.venv
+    echo         Please run: cd agent ^&^& python -m venv .venv ^&^& .venv\Scripts\pip install -r requirements.txt
+    pause
+    exit /b 1
 )
 
-echo Starting WorkSense desktop application...
-echo (First launch takes ~10 seconds to load the AI model)
-echo.
-
-%PYTHON% launch.py
+REM Launch Desktop App via launcher
+%PYTHON% desktop.py
 
 pause
