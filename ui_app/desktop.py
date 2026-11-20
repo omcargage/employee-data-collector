@@ -1,24 +1,21 @@
-"""WorkSense Standalone Desktop Application Launcher.
+"""WorkSense Standalone Desktop Application.
 
-Runs the WorkSense FastAPI backend and displays the UI inside a
-dedicated, borderless native desktop application window.
+Runs the WorkSense API engine and PyTorch model in-process, then displays
+the UI inside a dedicated, borderless native desktop application window.
 No browser tabs, no address bars, 100% desktop application experience.
 """
 import os
 import sys
 import time
-import socket
+import threading
 import subprocess
 import urllib.request
 from pathlib import Path
 
+# Ensure all packages are discoverable
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent
-AGENT_DIR = PROJECT_ROOT / "agent"
-VENV_PYTHON = AGENT_DIR / ".venv" / "Scripts" / "python.exe"
-SERVER_LOG_FILE = BASE_DIR / "server.log"
-
-for p in [AGENT_DIR, PROJECT_ROOT / "shared", PROJECT_ROOT / "backend"]:
+for p in [PROJECT_ROOT / "agent", PROJECT_ROOT / "shared", PROJECT_ROOT / "backend"]:
     if p.exists() and str(p) not in sys.path:
         sys.path.insert(0, str(p))
 
@@ -26,54 +23,6 @@ SERVER_HOST = "127.0.0.1"
 SERVER_PORT = 8000
 SERVER_URL = f"http://{SERVER_HOST}:{SERVER_PORT}"
 HEALTH_URL = f"{SERVER_URL}/api/health"
-
-
-def is_port_listening(host: str = SERVER_HOST, port: int = SERVER_PORT) -> bool:
-    """Instant socket check without proxy overhead."""
-    try:
-        with socket.create_connection((host, port), timeout=0.4):
-            return True
-    except (socket.timeout, ConnectionRefusedError, OSError):
-        return False
-
-
-def is_server_ready() -> bool:
-    """Check if the FastAPI app has completed startup."""
-    if not is_port_listening():
-        return False
-    try:
-        proxy_handler = urllib.request.ProxyHandler({})
-        opener = urllib.request.build_opener(proxy_handler)
-        with opener.open(HEALTH_URL, timeout=1.5) as resp:
-            return resp.status == 200
-    except Exception:
-        return False
-
-
-def wait_for_server(proc: subprocess.Popen, timeout_sec: int = 60) -> bool:
-    """Wait for server with live progress and error reporting."""
-    start_time = time.time()
-    print("      Initializing PyTorch engine and neural weights", end="", flush=True)
-
-    while time.time() - start_time < timeout_sec:
-        # Check if process terminated
-        if proc.poll() is not None:
-            print("\n[ERROR] Server process exited with code:", proc.returncode)
-            if SERVER_LOG_FILE.exists():
-                print("\nServer Log Output:\n" + SERVER_LOG_FILE.read_text(encoding="utf-8", errors="replace"))
-            return False
-
-        if is_server_ready():
-            print(" [READY]")
-            return True
-
-        print(".", end="", flush=True)
-        time.sleep(1.0)
-
-    print("\n[ERROR] Timeout waiting for server startup.")
-    if SERVER_LOG_FILE.exists():
-        print("\nLast server log:\n" + SERVER_LOG_FILE.read_text(encoding="utf-8", errors="replace")[-500:])
-    return False
 
 
 def find_browser_app_binary():
@@ -91,109 +40,109 @@ def find_browser_app_binary():
     return None
 
 
-def launch_window():
-    """Launch dedicated desktop window using Chrome/Edge app mode or pywebview."""
-    browser_exe = find_browser_app_binary()
-    if browser_exe:
-        print(f"      Launching standalone app container ({Path(browser_exe).stem})...")
-        subprocess.Popen([
-            browser_exe,
-            f"--app={SERVER_URL}",
-            "--window-size=1360,880",
-            "--app-auto-launched"
-        ])
-        return
-
-    # Fallback: pywebview
+def is_server_ready() -> bool:
+    """Check if the API is responding."""
     try:
-        import webview
-        window = webview.create_window(
-            title="WorkSense — Early-Warning Burnout Prevention",
-            url=SERVER_URL,
-            width=1340,
-            height=880,
-            min_size=(1024, 700),
-            resizable=True,
-            text_select=True,
-        )
-        webview.start()
-        return
-    except Exception as e:
-        print(f"[Notice] webview: {e}")
-
-    # Fallback to default
-    os.system(f'start "" "{SERVER_URL}"')
+        proxy_handler = urllib.request.ProxyHandler({})
+        opener = urllib.request.build_opener(proxy_handler)
+        with opener.open(HEALTH_URL, timeout=1.0) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
 
 
 def main():
-    print("=" * 60)
-    print("  WorkSense - Early-Warning Burnout Prevention")
-    print("  Desktop Application Launcher")
-    print("=" * 60)
+    print("=" * 66)
+    print("   WorkSense - Early-Warning Burnout Prevention")
+    print("   FLAME University Research Prototype | Desktop Application")
+    print("=" * 66)
+    print()
 
-    server_process = None
-    log_fp = None
+    # Step 1: Load neural model & start in-process server
+    print("[1/3] Loading neural network, baseline models & master dataset...", flush=True)
+    t0 = time.time()
 
-    if not is_server_ready():
-        print("[1/2] Starting backend engine & neural network...")
-        py_exe = str(VENV_PYTHON) if VENV_PYTHON.exists() else sys.executable
+    import uvicorn
+    from server import app, load_application_state
 
-        env = os.environ.copy()
-        python_paths = [str(PROJECT_ROOT / "agent"), str(PROJECT_ROOT / "shared"), str(BASE_DIR)]
-        env["PYTHONPATH"] = os.pathsep.join(python_paths)
+    # Explicitly load state with progress feedback
+    load_application_state()
+    print(f"      Engine initialized successfully in {time.time() - t0:.1f}s.")
 
-        # Redirect to log file to avoid pipe buffer deadlocks
-        log_fp = open(SERVER_LOG_FILE, "w", encoding="utf-8")
+    # Step 2: Start Uvicorn in background thread
+    print("[2/3] Starting local WorkSense server on port 8000...", flush=True)
+    config = uvicorn.Config(
+        app=app,
+        host=SERVER_HOST,
+        port=SERVER_PORT,
+        log_level="warning",
+        access_log=False,
+    )
+    server = uvicorn.Server(config)
+    server_thread = threading.Thread(target=server.run, daemon=True)
+    server_thread.start()
 
-        server_process = subprocess.Popen(
-            [
-                py_exe,
-                "-m",
-                "uvicorn",
-                "server:app",
-                "--app-dir",
-                str(BASE_DIR),
-                "--host",
-                SERVER_HOST,
-                "--port",
-                str(SERVER_PORT),
-                "--log-level",
-                "info",
-            ],
-            cwd=str(BASE_DIR),
-            env=env,
-            stdout=log_fp,
-            stderr=subprocess.STDOUT,
-        )
+    # Wait for server ready (usually < 1 second since app is already initialized)
+    for _ in range(20):
+        time.sleep(0.3)
+        if is_server_ready():
+            break
+    print("      Server is ready and connected to ML pipeline.")
 
-        if not wait_for_server(server_process, timeout_sec=60):
-            if server_process:
-                server_process.terminate()
-            if log_fp:
-                log_fp.close()
-            sys.exit(1)
-        print("      Backend ready.")
+    # Step 3: Launch standalone window
+    print("[3/3] Opening WorkSense Desktop Application window...", flush=True)
+    browser_exe = find_browser_app_binary()
+
+    window_proc = None
+    if browser_exe:
+        browser_name = Path(browser_exe).stem.title()
+        print(f"      Launching native window container ({browser_name} App Mode)...")
+        window_proc = subprocess.Popen([
+            browser_exe,
+            f"--app={SERVER_URL}",
+            "--window-size=1360,880",
+            "--app-auto-launched",
+        ])
     else:
-        print("[1/2] Backend engine is active on port 8000.")
-
-    # 2. Launch dedicated desktop window
-    print("[2/2] Launching WorkSense Desktop App window...")
-    launch_window()
-
-    print("\n" + "=" * 60)
-    print("  WorkSense is running in its own standalone window.")
-    print("  Close this window or press CTRL+C to stop the application.")
-    print("=" * 60 + "\n")
-
-    if server_process:
+        # Fallback to pywebview if available, or system default
         try:
-            server_process.wait()
-        except KeyboardInterrupt:
-            print("\nShutting down WorkSense...")
-            server_process.terminate()
-        finally:
-            if log_fp:
-                log_fp.close()
+            import webview
+            print("      Launching native pywebview window...")
+            webview.create_window(
+                title="WorkSense — Early-Warning Burnout Prevention",
+                url=SERVER_URL,
+                width=1340,
+                height=880,
+                min_size=(1024, 700),
+                resizable=True,
+                text_select=True,
+            )
+            webview.start()
+            server.should_exit = True
+            return
+        except Exception:
+            print("      Opening in default browser container...")
+            os.system(f'start "" "{SERVER_URL}"')
+
+    print()
+    print("=" * 66)
+    print("  WorkSense is running in its dedicated desktop window!")
+    print("  Close the application window or press CTRL+C to exit.")
+    print("=" * 66)
+    print()
+
+    # Keep script alive while the user is using the app window
+    try:
+        if window_proc:
+            window_proc.wait()
+            print("WorkSense window closed.")
+        else:
+            server_thread.join()
+    except KeyboardInterrupt:
+        print("\nStopping WorkSense...")
+    finally:
+        server.should_exit = True
+        print("Shutdown complete.")
 
 
 if __name__ == "__main__":
