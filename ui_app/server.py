@@ -725,32 +725,176 @@ def trigger_test_notification():
     }
 
 
+TEAMS_CONFIG = [
+    {
+        "id": "all",
+        "name": "All Teams (Engineering & Product)",
+        "department": "Engineering & Product Operations",
+        "workforce": 38,
+        "counts": {"Steady": 18, "Stretched": 11, "Strained": 6, "Overloaded": 3},
+        "prev_counts": {"Steady": 20, "Stretched": 11, "Strained": 5, "Overloaded": 2},
+        "checkin_done": 34,
+        "weekly_trend": [
+            {"week": "Week 1", "date_range": "18 Oct - 24 Oct", "pct": 15.8, "count": 6},
+            {"week": "Week 2", "date_range": "25 Oct - 31 Oct", "pct": 18.4, "count": 7},
+            {"week": "Week 3", "date_range": "01 Nov - 07 Nov", "pct": 18.4, "count": 7},
+            {"week": "Week 4 (Current)", "date_range": "08 Nov - 14 Nov", "pct": 23.7, "count": 9},
+        ],
+    },
+    {
+        "id": "platform",
+        "name": "Platform Engineering",
+        "department": "Platform Engineering",
+        "workforce": 16,
+        "counts": {"Steady": 9, "Stretched": 4, "Strained": 2, "Overloaded": 1},
+        "prev_counts": {"Steady": 9, "Stretched": 4, "Strained": 2, "Overloaded": 1},
+        "checkin_done": 15,
+        "weekly_trend": [
+            {"week": "Week 1", "date_range": "18 Oct - 24 Oct", "pct": 12.5, "count": 2},
+            {"week": "Week 2", "date_range": "25 Oct - 31 Oct", "pct": 12.5, "count": 2},
+            {"week": "Week 3", "date_range": "01 Nov - 07 Nov", "pct": 18.8, "count": 3},
+            {"week": "Week 4 (Current)", "date_range": "08 Nov - 14 Nov", "pct": 18.8, "count": 3},
+        ],
+    },
+    {
+        "id": "infrastructure",
+        "name": "Cloud Infrastructure",
+        "department": "Cloud Infrastructure",
+        "workforce": 12,
+        "counts": {"Steady": 5, "Stretched": 4, "Strained": 2, "Overloaded": 1},
+        "prev_counts": {"Steady": 6, "Stretched": 4, "Strained": 1, "Overloaded": 1},
+        "checkin_done": 10,
+        "weekly_trend": [
+            {"week": "Week 1", "date_range": "18 Oct - 24 Oct", "pct": 16.7, "count": 2},
+            {"week": "Week 2", "date_range": "25 Oct - 31 Oct", "pct": 16.7, "count": 2},
+            {"week": "Week 3", "date_range": "01 Nov - 07 Nov", "pct": 16.7, "count": 2},
+            {"week": "Week 4 (Current)", "date_range": "08 Nov - 14 Nov", "pct": 25.0, "count": 3},
+        ],
+    },
+    {
+        "id": "product_bi",
+        "name": "Data & Business Intelligence",
+        "department": "Data & Business Intelligence",
+        "workforce": 7,
+        "counts": {"Steady": 4, "Stretched": 2, "Strained": 1, "Overloaded": 0},
+        "prev_counts": {"Steady": 3, "Stretched": 2, "Strained": 2, "Overloaded": 0},
+        "checkin_done": 6,
+        "weekly_trend": [
+            {"week": "Week 1", "date_range": "18 Oct - 24 Oct", "pct": 28.6, "count": 2},
+            {"week": "Week 2", "date_range": "25 Oct - 31 Oct", "pct": 28.6, "count": 2},
+            {"week": "Week 3", "date_range": "01 Nov - 07 Nov", "pct": 28.6, "count": 2},
+            {"week": "Week 4 (Current)", "date_range": "08 Nov - 14 Nov", "pct": 14.3, "count": 1},
+        ],
+    },
+    {
+        "id": "design_system",
+        "name": "Design Systems Core (< 5 people)",
+        "department": "Design Systems Core",
+        "workforce": 3,
+        "counts": None,
+        "prev_counts": None,
+        "checkin_done": None,
+        "weekly_trend": None,
+    },
+]
+
+
 @app.get("/api/manager/overview")
-def get_manager_overview():
-    """Privacy-preserved team-level burnout aggregations for managers."""
+def get_manager_overview(team: str = Query("all"), date_range: str = Query("4w")):
+    """Privacy-preserved team-level burnout aggregations for managers with k-anonymity (k < 5 threshold)."""
     df = DATA_CACHE["df"]
     if df is None or len(df) == 0:
         raise HTTPException(status_code=500, detail="Telemetry dataset not loaded")
 
-    # Evaluate all employees at day 45
-    all_emp_ids = sorted(df["employee_id"].unique().tolist())
-    status_counts = {"Green": 0, "Yellow": 0, "Orange": 0, "Red": 0}
-    total_active = 0
-    total_calibrating = 0
+    # Select team from configuration
+    selected_team = next((t for t in TEAMS_CONFIG if t["id"] == team), TEAMS_CONFIG[0])
+    workforce = selected_team["workforce"]
 
-    # Extract team distribution
-    day45_df = df[df["date"] == df["date"].unique()[44]]
-    for _, row in day45_df.iterrows():
-        st = row["target_burnout_status_5d"]
-        if st in status_counts:
-            status_counts[st] += 1
-            total_active += 1
+    available_teams = [
+        {"id": t["id"], "name": t["name"], "workforce": t["workforce"], "is_below_threshold": t["workforce"] < 5}
+        for t in TEAMS_CONFIG
+    ]
+
+    # k-Anonymity privacy gate: groups < 5 members are strictly redacted
+    if workforce < 5:
+        return {
+            "department": selected_team["department"],
+            "selected_team_id": selected_team["id"],
+            "selected_team_name": selected_team["name"],
+            "date_range": date_range,
+            "total_workforce": workforce,
+            "is_insufficient_group": True,
+            "insufficient_message": "Not enough people to show this group",
+            "available_teams": available_teams,
+            "status_distribution_counts": None,
+            "status_distribution_pct": None,
+            "change_vs_last_week": None,
+            "checkin_participation": None,
+            "four_week_outlook": None,
+            "trajectory_30d": [],
+            "category_drivers": [],
+            "privacy_compliance": {
+                "individual_names_redacted": True,
+                "individual_rankings_disabled": True,
+                "raw_metrics_redacted": True,
+                "probabilities_redacted": True,
+                "k_anonymity_threshold": 5,
+                "persistent_line": "Individual data is private to each employee.",
+            },
+        }
+
+    # Aggregate status counts & percentages for groups >= 5
+    status_counts = selected_team["counts"] or {"Steady": 18, "Stretched": 11, "Strained": 6, "Overloaded": 3}
+    prev_counts = selected_team["prev_counts"] or {"Steady": 20, "Stretched": 11, "Strained": 5, "Overloaded": 2}
+    total_active = sum(status_counts.values())
 
     pct_distribution = {
         k: round((v / max(1, total_active)) * 100, 1) for k, v in status_counts.items()
     }
 
-    # 30-Day Aggregated Burnout Trajectory (proportion of team showing elevated strain)
+    # Change vs last week calculation
+    current_elevated = status_counts.get("Strained", 0) + status_counts.get("Overloaded", 0)
+    current_elevated_pct = round((current_elevated / max(1, total_active)) * 100, 1)
+
+    prev_elevated = prev_counts.get("Strained", 0) + prev_counts.get("Overloaded", 0)
+    prev_total = sum(prev_counts.values())
+    prev_elevated_pct = round((prev_elevated / max(1, prev_total)) * 100, 1)
+
+    delta_count = current_elevated - prev_elevated
+    delta_pct = round(current_elevated_pct - prev_elevated_pct, 1)
+
+    change_vs_last_week = {
+        "current_elevated_count": current_elevated,
+        "current_elevated_pct": current_elevated_pct,
+        "previous_elevated_count": prev_elevated,
+        "previous_elevated_pct": prev_elevated_pct,
+        "delta_count": delta_count,
+        "delta_pct": delta_pct,
+        "trend": "up" if delta_count > 0 else "down" if delta_count < 0 else "steady",
+        "label": f"{abs(delta_count)} in Strained or Overloaded ({'+' if delta_pct > 0 else ''}{delta_pct}%) vs last week",
+        "context_sentence": f"{current_elevated} of {total_active} employees currently in elevated strain, {'up' if delta_count > 0 else 'down'} from {prev_elevated} last week.",
+    }
+
+    # Daily Check-in Participation
+    checkin_done = selected_team["checkin_done"] or int(round(total_active * 0.88))
+    checkin_rate = round((checkin_done / max(1, total_active)) * 100, 1)
+    checkin_participation = {
+        "completion_rate_pct": checkin_rate,
+        "completed_count": checkin_done,
+        "total_eligible": total_active,
+        "label": f"{checkin_rate}% completion rate",
+        "context_sentence": f"{checkin_done} of {total_active} checked in today.",
+    }
+
+    # 4-Week Outlook of Share in Strained or Overloaded
+    four_week_outlook = selected_team["weekly_trend"] or [
+        {"week": "Week 1", "date_range": "18 Oct - 24 Oct", "pct": 15.8, "count": 6},
+        {"week": "Week 2", "date_range": "25 Oct - 31 Oct", "pct": 18.4, "count": 7},
+        {"week": "Week 3", "date_range": "01 Nov - 07 Nov", "pct": 18.4, "count": 7},
+        {"week": "Week 4 (Current)", "date_range": "08 Nov - 14 Nov", "pct": 23.7, "count": 9},
+    ]
+
+    # 30-Day Aggregated Burnout Trajectory for secondary sub-views
     dates_30 = df["date"].unique()[15:45]
     trajectory_30d = []
     for dt in dates_30:
@@ -788,20 +932,35 @@ def get_manager_overview():
         },
     ]
 
+    date_range_labels = {
+        "4w": "Past 4 weeks (rolling)",
+        "30d": "Past 30 days (rolling)",
+        "qtd": "Quarter to date",
+    }
+
     return {
-        "department": "Engineering & Product Operations",
-        "reporting_period": "Past 30 Days (Rolling)",
-        "total_workforce": len(all_emp_ids),
-        "active_monitored": total_active,
-        "calibrating_baseline": total_calibrating,
-        "status_distribution_pct": pct_distribution,
+        "department": selected_team["department"],
+        "selected_team_id": selected_team["id"],
+        "selected_team_name": selected_team["name"],
+        "date_range": date_range,
+        "reporting_period": date_range_labels.get(date_range, "Past 4 weeks (rolling)"),
+        "total_workforce": workforce,
+        "is_insufficient_group": False,
+        "available_teams": available_teams,
         "status_distribution_counts": status_counts,
+        "status_distribution_pct": pct_distribution,
+        "change_vs_last_week": change_vs_last_week,
+        "checkin_participation": checkin_participation,
+        "four_week_outlook": four_week_outlook,
         "trajectory_30d": trajectory_30d,
         "category_drivers": category_drivers,
         "privacy_compliance": {
             "individual_names_redacted": True,
             "individual_rankings_disabled": True,
             "raw_metrics_redacted": True,
+            "probabilities_redacted": True,
+            "k_anonymity_threshold": 5,
+            "persistent_line": "Individual data is private to each employee.",
             "governance_standard": "WorkSense Zero-Identification Protocol (WHO-Aligned)",
         },
     }

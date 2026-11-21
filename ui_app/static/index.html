@@ -3267,20 +3267,66 @@
     }
 
     // =========================================================================
-    // MANAGER PORTAL CONTENT (PRIVACY-PRESERVED)
+    // MANAGER PORTAL CONTENT (PRIVACY-PRESERVED & k-ANONYMITY GATED)
     // =========================================================================
     function ManagerPortalContent({ currentRoute, setCurrentRoute, data }) {
       if (!data) return <EmptyState title="No manager telemetry" description="Unable to load team statistics." />;
 
+      const [selectedTeam, setSelectedTeam] = useState(data.selected_team_id || "all");
+      const [selectedRange, setSelectedRange] = useState(data.date_range || "4w");
+      const [teamData, setTeamData] = useState(data);
+      const [loadingTeam, setLoadingTeam] = useState(false);
+      const [hoveredPoint, setHoveredPoint] = useState(null);
+
+      useEffect(() => {
+        if (data) setTeamData(data);
+      }, [data]);
+
+      const handleTeamChange = (newTeam) => {
+        setSelectedTeam(newTeam);
+        setLoadingTeam(true);
+        fetch(`/api/manager/overview?team=${newTeam}&date_range=${selectedRange}`)
+          .then(res => res.json())
+          .then(resData => {
+            setTeamData(resData);
+            setLoadingTeam(false);
+          })
+          .catch(err => {
+            console.error("Error loading team data:", err);
+            setLoadingTeam(false);
+          });
+      };
+
+      const handleRangeChange = (newRange) => {
+        setSelectedRange(newRange);
+        setLoadingTeam(true);
+        fetch(`/api/manager/overview?team=${selectedTeam}&date_range=${newRange}`)
+          .then(res => res.json())
+          .then(resData => {
+            setTeamData(resData);
+            setLoadingTeam(false);
+          })
+          .catch(err => {
+            console.error("Error loading team data:", err);
+            setLoadingTeam(false);
+          });
+      };
+
       const {
         department,
+        selected_team_name,
         reporting_period,
         total_workforce,
+        is_insufficient_group,
+        available_teams = [],
         status_distribution_pct,
         status_distribution_counts,
-        trajectory_30d,
-        category_drivers,
-      } = data;
+        change_vs_last_week,
+        checkin_participation,
+        four_week_outlook,
+        category_drivers = [],
+        trajectory_30d = [],
+      } = teamData;
 
       if (currentRoute === "about") {
         return (
@@ -3294,6 +3340,7 @@
                 WorkSense implements the Zero-Identification Protocol. Managers only receive aggregated department-level metrics to safeguard individual psychological safety.
               </p>
               <div className="p-4 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] space-y-2">
+                <div>&bull; <strong className="text-[var(--text-primary)]">k-Anonymity guarantee:</strong> Any group with fewer than 5 employees is completely redacted from manager views.</div>
                 <div>&bull; <strong className="text-[var(--text-primary)]">No individual ranking:</strong> Team members are never ranked against each other.</div>
                 <div>&bull; <strong className="text-[var(--text-primary)]">No raw telemetry access:</strong> Individual keystroke logs, active application titles, and screen captures are strictly prohibited by architecture.</div>
                 <div>&bull; <strong className="text-[var(--text-primary)]">Early-warning purpose:</strong> Data serves exclusively to identify organizational workload imbalance 5+ days before acute exhaustion occurs.</div>
@@ -3312,7 +3359,7 @@
                   <h3 className="text-base font-semibold text-[var(--text-primary)]">30-day department burnout trajectory</h3>
                   <p className="text-xs text-[var(--text-secondary)] mt-0.5">Rolling percentage of team at elevated risk</p>
                 </div>
-                <span className="text-xs px-2 py-0.5 rounded-md bg-[var(--bg-card-subtle)] text-[var(--text-secondary)] font-medium">
+                <span className="text-xs px-2.5 py-1 rounded-full bg-[var(--bg-card-subtle)] text-[var(--text-secondary)] font-medium border border-[var(--border-subtle)]">
                   Aggregated telemetry
                 </span>
               </div>
@@ -3365,130 +3412,447 @@
         );
       }
 
+      // Default: Overview (route /overview)
       return (
         <div className="space-y-6">
-          <div className="ws-card p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
-                People analytics & organizational rhythm
-              </span>
-              <h2 className="text-xl font-bold text-[var(--text-primary)] mt-0.5">{department}</h2>
-              <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-                Reporting window: {reporting_period} &bull; {total_workforce} active knowledge workers
-              </p>
-            </div>
-            <div className="p-3 rounded-xl border border-[var(--status-steady-border)] bg-[var(--status-steady-bg)] text-xs text-[var(--status-steady)] max-w-sm">
-              <strong className="block font-semibold">Zero-Identification protocol active:</strong>
-              Individual names, rankings, and raw activity logs are strictly redacted.
-            </div>
-          </div>
+          {/* Header Card: Team Selector & Date Range */}
+          <div className="ws-card p-6 space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
+                  Manager Portal &bull; Overview
+                </span>
+                <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] mt-0.5">
+                  {selected_team_name || department}
+                </h2>
+                <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                  Aggregated organizational workload, strain distribution, and participation trends.
+                </p>
+              </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              {
-                key: "Green",
-                word: "Steady",
-                color: "var(--status-steady)",
-                bg: "var(--status-steady-bg)",
-                border: "var(--status-steady-border)",
-                icon: STATUS_META.Green.icon,
-                pct: status_distribution_pct.Green,
-                count: status_distribution_counts.Green,
-                desc: "Within personal baseline rhythms"
-              },
-              {
-                key: "Yellow",
-                word: "Stretched",
-                color: "var(--status-stretched)",
-                bg: "var(--status-stretched-bg)",
-                border: "var(--status-stretched-border)",
-                icon: STATUS_META.Yellow.icon,
-                pct: status_distribution_pct.Yellow,
-                count: status_distribution_counts.Yellow,
-                desc: "Minor workload rhythm variances"
-              },
-              {
-                key: "Orange",
-                word: "Strained",
-                color: "var(--status-strained)",
-                bg: "var(--status-strained-bg)",
-                border: "var(--status-strained-border)",
-                icon: STATUS_META.Orange.icon,
-                pct: status_distribution_pct.Orange,
-                count: status_distribution_counts.Orange,
-                desc: "Flagged 5+ days before exhaustion"
-              },
-              {
-                key: "Red",
-                word: "Overloaded",
-                color: "var(--status-overloaded)",
-                bg: "var(--status-overloaded-bg)",
-                border: "var(--status-overloaded-border)",
-                icon: STATUS_META.Red.icon,
-                pct: status_distribution_pct.Red,
-                count: status_distribution_counts.Red,
-                desc: "Severe sustained multi-factor strain"
-              }
-            ].map((stat, idx) => (
-              <div key={idx} className="ws-card p-5" style={{ borderColor: stat.border }}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="ws-badge text-xs" style={{ backgroundColor: stat.bg, color: stat.color }}>
-                    {stat.icon}
-                    <span>{stat.word}</span>
-                  </div>
-                  <span className="text-xs font-medium text-[var(--text-muted)]">{stat.count} members</span>
+              {/* Controls: Team Selector & Date Range Dropdowns */}
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Team Selector */}
+                <div className="flex items-center gap-1.5 bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)] rounded-xl px-3 py-1.5 shadow-xs">
+                  <span className="text-[11px] font-semibold text-[var(--text-muted)]">Team:</span>
+                  <select
+                    value={selectedTeam}
+                    onChange={(e) => handleTeamChange(e.target.value)}
+                    className="bg-transparent text-xs font-semibold text-[var(--text-primary)] focus:outline-none cursor-pointer"
+                  >
+                    {available_teams.map((t) => (
+                      <option key={t.id} value={t.id} className="bg-[var(--bg-card)] text-[var(--text-primary)]">
+                        {t.name} ({t.workforce} members)
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <div className="text-3xl font-bold mt-1" style={{ color: stat.color }}>{stat.pct}%</div>
-                <p className="text-[11px] text-[var(--text-secondary)] mt-2">{stat.desc}</p>
-              </div>
-            ))}
-          </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="ws-card p-6">
-              <h3 className="text-base font-semibold text-[var(--text-primary)] mb-1">30-day burnout trajectory</h3>
-              <p className="text-xs text-[var(--text-secondary)] mb-4">Rolling percentage of department at elevated risk</p>
-              <div className="h-44 flex items-end gap-1.5 pt-4 pb-1 border-b border-[var(--border-subtle)]">
-                {trajectory_30d.slice(-15).map((pt, i) => {
-                  const h = Math.max(10, (pt.pct_elevated_risk / 35.0) * 150);
-                  const isHigh = pt.pct_elevated_risk > 20;
-                  return (
-                    <div key={i} className="flex-1 flex flex-col items-center">
-                      <div
-                        className="w-full rounded-t transition-all"
-                        style={{ height: `${h}px`, backgroundColor: isHigh ? "var(--status-strained)" : "var(--primary)" }}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex justify-between text-xs text-[var(--text-muted)] mt-2">
-                <span>15 days ago</span>
-                <span>Today</span>
+                {/* Date Range Selector */}
+                <div className="flex items-center gap-1.5 bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)] rounded-xl px-3 py-1.5 shadow-xs">
+                  <span className="text-[11px] font-semibold text-[var(--text-muted)]">Range:</span>
+                  <select
+                    value={selectedRange}
+                    onChange={(e) => handleRangeChange(e.target.value)}
+                    className="bg-transparent text-xs font-semibold text-[var(--text-primary)] focus:outline-none cursor-pointer"
+                  >
+                    <option value="4w" className="bg-[var(--bg-card)] text-[var(--text-primary)]">Past 4 weeks</option>
+                    <option value="30d" className="bg-[var(--bg-card)] text-[var(--text-primary)]">Past 30 days</option>
+                    <option value="qtd" className="bg-[var(--bg-card)] text-[var(--text-primary)]">Quarter to date</option>
+                  </select>
+                </div>
               </div>
             </div>
 
-            <div className="ws-card p-6">
-              <h3 className="text-base font-semibold text-[var(--text-primary)] mb-1">Primary behavioral contributors</h3>
-              <p className="text-xs text-[var(--text-secondary)] mb-4">Aggregated across all team members</p>
-              <div className="space-y-3">
-                {category_drivers.map((cat, i) => (
-                  <div key={i}>
-                    <div className="flex justify-between text-xs font-medium text-[var(--text-primary)] mb-1">
-                      <span>{cat.category}</span>
-                      <span className="font-bold text-[var(--primary)]">{cat.attribution_pct}%</span>
+            {/* Persistent Privacy Line */}
+            <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between gap-3 text-xs text-[var(--text-secondary)]">
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-[var(--primary)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <span className="font-bold text-[var(--text-primary)]">Individual data is private to each employee.</span>
+                <span className="hidden sm:inline text-[var(--text-muted)]">&mdash; All figures are aggregates. Names, raw telemetry metrics, and individual probabilities are never displayed.</span>
+              </div>
+              <span className="text-[11px] font-medium text-[var(--text-muted)] shrink-0">
+                k-Anonymity (&ge; 5)
+              </span>
+            </div>
+          </div>
+
+          {/* Loading Indicator */}
+          {loadingTeam && (
+            <div className="p-4 ws-skeleton rounded-2xl text-center text-xs text-[var(--text-muted)]">
+              Updating team aggregation data...
+            </div>
+          )}
+
+          {/* k-ANONYMITY PRIVACY GATE: If group has fewer than 5 people */}
+          {is_insufficient_group ? (
+            <div className="ws-card p-12 text-center flex flex-col items-center justify-center space-y-3">
+              <div className="w-14 h-14 rounded-2xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)] flex items-center justify-center text-[var(--primary)] mb-1 shadow-xs">
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-[var(--text-primary)]">
+                Not enough people to show this group
+              </h3>
+              <p className="text-xs text-[var(--text-secondary)] max-w-md leading-relaxed">
+                To protect individual psychological safety and prevent de-anonymization, WorkSense strictly suppresses all counts, percentages, and metrics for groups with fewer than 5 people.
+              </p>
+              <div className="p-3 rounded-xl bg-[var(--primary-subtle)] border border-[var(--border-subtle)] text-xs font-semibold text-[var(--primary)] mt-2">
+                Select a group with 5 or more members or "All Teams" from the dropdown above to view aggregated team health.
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* KPI ROW: 3 Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* KPI 1: Team status mix (Stacked Bar with Counts) */}
+                <div className="ws-card p-5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+                        Team status mix
+                      </span>
+                      <span className="text-xs font-bold text-[var(--text-muted)]">
+                        {total_workforce} members
+                      </span>
                     </div>
-                    <div className="w-full h-2 bg-[var(--bg-card-subtle)] rounded-full overflow-hidden">
+
+                    {/* Stacked Horizontal Bar */}
+                    <div className="w-full h-4 bg-[var(--bg-card-subtle)] rounded-full overflow-hidden flex my-3 shadow-inner">
                       <div
-                        className="h-full rounded-full"
-                        style={{ width: `${cat.attribution_pct * 2}%`, backgroundColor: "var(--primary)" }}
+                        style={{ width: `${status_distribution_pct?.Steady || 0}%`, backgroundColor: "var(--status-steady)" }}
+                        title={`Steady: ${status_distribution_counts?.Steady || 0} (${status_distribution_pct?.Steady || 0}%)`}
+                        className="transition-all hover:opacity-90 cursor-help"
+                      />
+                      <div
+                        style={{ width: `${status_distribution_pct?.Stretched || 0}%`, backgroundColor: "var(--status-stretched)" }}
+                        title={`Stretched: ${status_distribution_counts?.Stretched || 0} (${status_distribution_pct?.Stretched || 0}%)`}
+                        className="transition-all hover:opacity-90 cursor-help"
+                      />
+                      <div
+                        style={{ width: `${status_distribution_pct?.Strained || 0}%`, backgroundColor: "var(--status-strained)" }}
+                        title={`Strained: ${status_distribution_counts?.Strained || 0} (${status_distribution_pct?.Strained || 0}%)`}
+                        className="transition-all hover:opacity-90 cursor-help"
+                      />
+                      <div
+                        style={{ width: `${status_distribution_pct?.Overloaded || 0}%`, backgroundColor: "var(--status-overloaded)" }}
+                        title={`Overloaded: ${status_distribution_counts?.Overloaded || 0} (${status_distribution_pct?.Overloaded || 0}%)`}
+                        className="transition-all hover:opacity-90 cursor-help"
                       />
                     </div>
                   </div>
-                ))}
+
+                  {/* 4 Status Chips with Counts & Percentages */}
+                  <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-[var(--border-subtle)]">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: "var(--status-steady)" }} />
+                      <span className="font-semibold text-[var(--text-primary)]">Steady:</span>
+                      <span className="text-[var(--text-secondary)] font-medium">
+                        {status_distribution_counts?.Steady} ({status_distribution_pct?.Steady}%)
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: "var(--status-stretched)" }} />
+                      <span className="font-semibold text-[var(--text-primary)]">Stretched:</span>
+                      <span className="text-[var(--text-secondary)] font-medium">
+                        {status_distribution_counts?.Stretched} ({status_distribution_pct?.Stretched}%)
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: "var(--status-strained)" }} />
+                      <span className="font-semibold text-[var(--text-primary)]">Strained:</span>
+                      <span className="text-[var(--text-secondary)] font-medium">
+                        {status_distribution_counts?.Strained} ({status_distribution_pct?.Strained}%)
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: "var(--status-overloaded)" }} />
+                      <span className="font-semibold text-[var(--text-primary)]">Overloaded:</span>
+                      <span className="text-[var(--text-secondary)] font-medium">
+                        {status_distribution_counts?.Overloaded} ({status_distribution_pct?.Overloaded}%)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* KPI 2: Change vs last week */}
+                <div className="ws-card p-5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+                        Change vs last week
+                      </span>
+                      {change_vs_last_week && (
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-full font-bold inline-flex items-center gap-1 ${
+                            change_vs_last_week.delta_count > 0
+                              ? "bg-[var(--status-strained-bg)] text-[var(--status-strained)] border border-[var(--status-strained-border)]"
+                              : change_vs_last_week.delta_count < 0
+                              ? "bg-[var(--status-steady-bg)] text-[var(--status-steady)] border border-[var(--status-steady-border)]"
+                              : "bg-[var(--bg-card-subtle)] text-[var(--text-muted)]"
+                          }`}
+                        >
+                          {change_vs_last_week.delta_count > 0 ? "▲" : change_vs_last_week.delta_count < 0 ? "▼" : "•"}
+                          <span>{change_vs_last_week.delta_pct > 0 ? `+${change_vs_last_week.delta_pct}%` : `${change_vs_last_week.delta_pct}%`}</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="text-2xl font-bold text-[var(--text-primary)] mt-2">
+                      {change_vs_last_week ? (
+                        <span>
+                          {change_vs_last_week.delta_count > 0 ? `+${change_vs_last_week.delta_count}` : change_vs_last_week.delta_count} in Strained or Overloaded
+                        </span>
+                      ) : (
+                        "No change"
+                      )}
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-[var(--text-secondary)] mt-3 pt-2 border-t border-[var(--border-subtle)] leading-relaxed">
+                    {change_vs_last_week?.context_sentence || "Workload strain comparison relative to previous 7-day period."}
+                  </p>
+                </div>
+
+                {/* KPI 3: Check-in participation */}
+                <div className="ws-card p-5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+                        Check-in participation
+                      </span>
+                      <span className="text-xs font-bold text-[var(--primary)]">
+                        BAT-12 daily
+                      </span>
+                    </div>
+
+                    <div className="text-2xl font-bold text-[var(--text-primary)] mt-2">
+                      {checkin_participation?.completion_rate_pct || 88}%
+                      <span className="text-xs font-medium text-[var(--text-muted)] ml-2">completion rate</span>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="w-full h-2 bg-[var(--bg-card-subtle)] rounded-full overflow-hidden mt-3">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${checkin_participation?.completion_rate_pct || 88}%`,
+                          backgroundColor: "var(--primary)"
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-[var(--text-secondary)] mt-3 pt-2 border-t border-[var(--border-subtle)] leading-relaxed">
+                    {checkin_participation?.context_sentence || "Daily self-report completion rate across the team."}
+                  </p>
+                </div>
               </div>
-            </div>
-          </div>
+
+              {/* 4-WEEK OUTLOOK CHART: Share of Employees in Strained or Overloaded */}
+              <div className="ws-card p-6 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
+                        4-Week Trajectory
+                      </span>
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-[var(--status-strained-bg)] text-[var(--status-strained)] font-semibold border border-[var(--status-strained-border)]">
+                        Strained & Overloaded share
+                      </span>
+                    </div>
+                    <h3 className="text-base sm:text-lg font-bold text-[var(--text-primary)] mt-0.5">
+                      Share of employees in Strained or Overloaded
+                    </h3>
+                    <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                      4-week weekly trend of team members exhibiting elevated workload strain or cognitive depletion.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3 text-xs text-[var(--text-muted)] self-start sm:self-auto">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-3 h-0.5 border-t-2 border-dashed border-[var(--status-strained)]" />
+                      <span>20% attention threshold</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[var(--primary)]" />
+                      <span>Weekly aggregate</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* SVG Chart Rendering */}
+                <div className="relative pt-2 pb-2">
+                  <svg className="w-full h-56 overflow-visible" viewBox="0 0 600 200" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id="managerGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="var(--status-strained)" stopOpacity="0.28" />
+                        <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.02" />
+                      </linearGradient>
+                    </defs>
+
+                    {/* Y-Axis Guidelines & Labels */}
+                    {[
+                      { val: 0, y: 170 },
+                      { val: 10, y: 132.5 },
+                      { val: 20, y: 95 },
+                      { val: 30, y: 57.5 },
+                      { val: 40, y: 20 },
+                    ].map((g, i) => (
+                      <g key={i}>
+                        <line
+                          x1="45"
+                          y1={g.y}
+                          x2="580"
+                          y2={g.y}
+                          stroke="var(--border-subtle)"
+                          strokeWidth="1"
+                          strokeDasharray={g.val === 20 ? "4 4" : "none"}
+                        />
+                        <text
+                          x="38"
+                          y={g.y + 4}
+                          fill="var(--text-muted)"
+                          fontSize="10"
+                          textAnchor="end"
+                          fontFamily="Inter, sans-serif"
+                        >
+                          {g.val}%
+                        </text>
+                      </g>
+                    ))}
+
+                    {/* 20% Benchmark Line Label */}
+                    <text
+                      x="580"
+                      y="91"
+                      fill="var(--status-strained)"
+                      fontSize="9"
+                      fontWeight="bold"
+                      textAnchor="end"
+                      fontFamily="Inter, sans-serif"
+                    >
+                      Threshold (20%)
+                    </text>
+
+                    {/* Area & Line Path */}
+                    {(() => {
+                      const points = (four_week_outlook || []).map((pt, idx) => {
+                        const x = 80 + idx * 160;
+                        const y = 170 - (pt.pct / 40.0) * 150;
+                        return { ...pt, x, y };
+                      });
+
+                      if (points.length < 2) return null;
+
+                      const areaD = `M ${points[0].x} 170 L ` + points.map(p => `${p.x} ${p.y}`).join(" L ") + ` L ${points[points.length - 1].x} 170 Z`;
+                      const lineD = `M ` + points.map(p => `${p.x} ${p.y}`).join(" L ");
+
+                      return (
+                        <g>
+                          <path d={areaD} fill="url(#managerGrad)" />
+                          <path d={lineD} fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                          {points.map((p, idx) => {
+                            const isElevated = p.pct >= 20;
+                            return (
+                              <g
+                                key={idx}
+                                className="cursor-pointer"
+                                onMouseEnter={() => setHoveredPoint(p)}
+                                onMouseLeave={() => setHoveredPoint(null)}
+                              >
+                                <circle
+                                  cx={p.x}
+                                  cy={p.y}
+                                  r="5.5"
+                                  fill="var(--bg-card)"
+                                  stroke={isElevated ? "var(--status-strained)" : "var(--primary)"}
+                                  strokeWidth="3"
+                                  className="transition-transform hover:scale-125"
+                                />
+                                <text
+                                  x={p.x}
+                                  y={p.y - 10}
+                                  fill={isElevated ? "var(--status-strained)" : "var(--text-primary)"}
+                                  fontSize="11"
+                                  fontWeight="bold"
+                                  textAnchor="middle"
+                                  fontFamily="Inter, sans-serif"
+                                >
+                                  {p.pct}%
+                                </text>
+                              </g>
+                            );
+                          })}
+                        </g>
+                      );
+                    })()}
+                  </svg>
+
+                  {/* X-Axis Labels */}
+                  <div className="grid grid-cols-4 gap-2 text-center text-xs text-[var(--text-secondary)] pt-2 border-t border-[var(--border-subtle)]">
+                    {(four_week_outlook || []).map((w, idx) => (
+                      <div key={idx} className="space-y-0.5">
+                        <div className="font-bold text-[var(--text-primary)]">{w.week}</div>
+                        <div className="text-[11px] text-[var(--text-muted)]">{w.date_range}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Insight Callout */}
+                <div className="p-3.5 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)] flex items-start gap-2.5 text-xs text-[var(--text-secondary)] leading-relaxed">
+                  <div className="p-1 rounded-md bg-[var(--primary-subtle)] text-[var(--primary)] shrink-0 mt-0.5">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <strong className="text-[var(--text-primary)]">Aggregated trend insight:</strong>{" "}
+                    The share of employees experiencing elevated strain rose from 15.8% to 23.7% over the 4-week window, surpassing the 20% benchmark in Week 4. Team-level drivers indicate extended unbroken focus stretches and post-7 PM messaging as primary factors.
+                  </div>
+                </div>
+              </div>
+
+              {/* Primary Team Behavioral Contributors */}
+              <div className="ws-card p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
+                      Workload Imbalance Attribution
+                    </span>
+                    <h3 className="text-base font-bold text-[var(--text-primary)] mt-0.5">
+                      Top behavioral contributors across team
+                    </h3>
+                  </div>
+                  <span className="text-xs text-[var(--text-muted)]">
+                    Aggregated across all active members
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {category_drivers.map((cat, i) => (
+                    <div key={i} className="p-4 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)] space-y-2">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-bold text-[var(--text-primary)]">{cat.category}</span>
+                        <span className="font-bold text-[var(--primary)] text-sm">{cat.attribution_pct}%</span>
+                      </div>
+                      <div className="w-full h-2 bg-[var(--bg-card)] rounded-full overflow-hidden border border-[var(--border-subtle)]">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{ width: `${cat.attribution_pct * 2}%`, backgroundColor: "var(--primary)" }}
+                        />
+                      </div>
+                      <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">{cat.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       );
     }
