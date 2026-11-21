@@ -320,7 +320,7 @@ window.WORK_SENSE_STRINGS = {
       title: "Unable to load data",
       description: "Could not connect to the local WorkSense background app.",
       retryButton: "Try again",
-      offlineTip: "Please ensure desktop.py or start_worksense.bat is active on your computer."
+      offlineTip: "Please ensure desktop.py or worksense.bat is active on your computer."
     }
   }
 };

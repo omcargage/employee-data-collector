@@ -172,15 +172,19 @@ def main():
         try:
             import webview
             print("      Launching native pywebview window...")
-            webview.create_window(
-                title="WorkSense — Early-Warning Burnout Prevention",
-                url=target_url,
-                width=1340,
-                height=880,
-                min_size=(1024, 700),
-                resizable=True,
-                text_select=True,
-            )
+            icon_path = str(BASE_DIR / "static" / "worksense.ico")
+            webview_kwargs = {
+                "title": "WorkSense — Early-Warning Burnout Prevention",
+                "url": target_url,
+                "width": 1340,
+                "height": 880,
+                "min_size": (1024, 700),
+                "resizable": True,
+                "text_select": True,
+            }
+            if os.path.exists(icon_path):
+                webview_kwargs["icon"] = icon_path
+            webview.create_window(**webview_kwargs)
             webview.start()
             if started_server and server:
                 server.should_exit = True

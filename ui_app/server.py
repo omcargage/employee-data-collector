@@ -1779,6 +1779,14 @@ def serve_index():
     return HTMLResponse(content=index_file.read_text(encoding="utf-8"), status_code=200)
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+def serve_favicon():
+    favicon_file = STATIC_DIR / "favicon.ico"
+    if favicon_file.exists():
+        return FileResponse(favicon_file, media_type="image/x-icon")
+    raise HTTPException(status_code=404, detail="Favicon not found")
+
+
 # Mount static assets if any
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 

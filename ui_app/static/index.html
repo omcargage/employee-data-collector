@@ -6,6 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WorkSense — Early-Warning Burnout Prevention</title>
 
+  <!-- WorkSense App Icons & PWA Metadata -->
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+  <link rel="icon" type="image/png" sizes="192x192" href="/static/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/static/icon-512.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#1F5C63">
+
   <script>
     // Global fallback for unhandled exceptions to prevent blank screen
     window.addEventListener('error', function(e) {
@@ -443,7 +451,7 @@
       const errTitle = title || STRINGS?.states?.error?.title || "Unable to load data";
       const errDesc = description || STRINGS?.states?.error?.description || "An error occurred while communicating with the local WorkSense bridge server.";
       const retryBtn = STRINGS?.states?.error?.retryButton || "Try again";
-      const offlineTip = STRINGS?.states?.error?.offlineTip || "Ensure desktop.py or start_worksense.bat is active on your workstation.";
+      const offlineTip = STRINGS?.states?.error?.offlineTip || "Ensure desktop.py or worksense.bat is active on your workstation.";
 
       return (
         <div role="alert" aria-live="assertive" className="ws-card p-8 sm:p-10 text-center flex flex-col items-center justify-center border-l-4 border-[var(--status-strained)]">
@@ -3240,9 +3248,11 @@
                 {/* Brand Logo & Wordmark */}
                 <div className="h-14 flex items-center justify-between px-4 border-b border-[var(--border-subtle)]">
                   <div className="flex items-center gap-3 overflow-hidden">
-                    <div className="w-8 h-8 rounded-xl bg-[var(--primary)] flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">
-                      W
-                    </div>
+                    <img
+                      src="/static/icon-192.png"
+                      alt="WorkSense"
+                      className="w-8 h-8 rounded-xl shrink-0 shadow-xs object-cover"
+                    />
                     {!sidebarCollapsed && (
                       <span className="font-semibold text-base tracking-tight text-[var(--text-primary)] truncate">
                         WorkSense
@@ -5635,11 +5645,11 @@
             <div className="px-6 pt-6 pb-4 border-b border-[var(--border-subtle)]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                    </svg>
-                  </div>
+                  <img
+                    src="/static/icon-192.png"
+                    alt="WorkSense"
+                    className="w-10 h-10 rounded-xl shrink-0 shadow-xs object-cover"
+                  />
                   <div>
                     <h3 className="text-base font-bold text-[var(--text-primary)]">Sign in to Live App</h3>
                     <p className="text-xs text-[var(--text-secondary)]">Connect to your local workstation data</p>

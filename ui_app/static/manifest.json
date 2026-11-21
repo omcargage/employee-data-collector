@@ -1,0 +1,28 @@
+{
+  "name": "WorkSense — Early-Warning Burnout Prevention",
+  "short_name": "WorkSense",
+  "description": "Early-warning burnout prevention platform built as an interdisciplinary student research project at FLAME University, Pune.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7F6F3",
+  "theme_color": "#1F5C63",
+  "icons": [
+    {
+      "src": "/static/favicon.ico",
+      "sizes": "16x16 32x32 48x48 64x64",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/static/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
