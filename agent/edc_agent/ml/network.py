@@ -165,7 +165,7 @@ class WorkSenseTemporalNN(nn.Module):
         category_labels = {
             "boundary_erosion": "Late-Night & After-Hours Communication",
             "work_pattern_changes": "Extended Work Stretches & Irregular Breaks",
-            "recovery_deficit": "Desk-Dining & Skipped Meal Breaks",
+            "recovery_deficit": "Skipped Lunch & Midday Break Recovery",
             "cognitive_and_focus_fatigue": "Focus Block Fragmentation & Typing Fatigue",
         }
 

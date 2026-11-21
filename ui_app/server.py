@@ -777,7 +777,7 @@ def get_manager_overview():
             "description": "Email and chat messages sent outside scheduled shift boundaries.",
         },
         {
-            "category": "Desk-Dining & Skipped Meal Breaks",
+            "category": "Skipped Lunch & Midday Break Recovery",
             "attribution_pct": 17.5,
             "description": "Shortened or absent midday recovery blocks during working hours.",
         },
