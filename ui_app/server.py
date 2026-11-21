@@ -966,6 +966,555 @@ def get_manager_overview(team: str = Query("all"), date_range: str = Query("4w")
     }
 
 
+# =========================================================================
+# MANAGER PORTAL EXTENDED ENDPOINTS (REMAINING PAGES)
+# =========================================================================
+
+class ActionUpdateRequest(BaseModel):
+    action_id: str
+    status: str  # "Planned", "In progress", "Done"
+
+
+class ReportGenerateRequest(BaseModel):
+    team_id: str = "all"
+    report_type: str = "stress_level_summary"
+    date_range: str = "4w"
+    dispatch_channel: str = "download"  # "download", "email"
+    recipient_email: Optional[str] = None
+
+
+class WorkingHoursUpdateRequest(BaseModel):
+    core_hours_start: str = "09:00"
+    core_hours_end: str = "18:00"
+    lunch_start: str = "12:30"
+    lunch_end: str = "13:30"
+    weekly_standard_hours: int = 45
+
+
+MANAGER_STATE = {
+    "actions": [
+        {
+            "id": "act_workload_review",
+            "title": "Workload review",
+            "category": "Workload hours",
+            "description": "Rebalance sprint commitments and defer non-urgent backlog epics to relieve sustained overload.",
+            "status": "In progress",
+            "target_date": "18 Nov 2026",
+            "owner": "Engineering Leads",
+            "impact_area": "Workload hours",
+            "notes": "Discussed in sprint retrospective. 3 secondary epics deferred.",
+        },
+        {
+            "id": "act_no_meeting",
+            "title": "No-meeting blocks",
+            "category": "Focus time",
+            "description": "Establish company-wide meeting-free Wednesday afternoons (1:00 PM - 5:00 PM) to restore deep focus time.",
+            "status": "Planned",
+            "target_date": "23 Nov 2026",
+            "owner": "Product & Operations",
+            "impact_area": "Focus time",
+            "notes": "Calendar policy drafted, awaiting final sign-off.",
+        },
+        {
+            "id": "act_encourage_leave",
+            "title": "Encourage leave",
+            "category": "Extended stretches",
+            "description": "Identify teams with high accumulated PTO balances and encourage scheduled long weekends before quarter-end.",
+            "status": "Done",
+            "target_date": "10 Nov 2026",
+            "owner": "People Operations",
+            "impact_area": "Extended stretches",
+            "notes": "Completed reminder campaign; 12 team members scheduled recovery days.",
+        },
+        {
+            "id": "act_protect_lunch",
+            "title": "Protect lunch hours",
+            "category": "Break patterns",
+            "description": "Calendar auto-block 12:30 PM - 1:30 PM across all departments with Slack/Teams quiet notifications.",
+            "status": "In progress",
+            "target_date": "15 Nov 2026",
+            "owner": "Engineering Director",
+            "impact_area": "Break patterns",
+            "notes": "Calendar block active for 32/38 members; tracking midday recovery.",
+        },
+    ],
+    "reports": [
+        {
+            "id": "rep_20261118_wk4",
+            "title": "Weekly Executive Stress Summary (Week 4)",
+            "scope": "All Teams (Engineering & Product)",
+            "generated_at": "18 Nov 2026, 09:00 AM",
+            "overall_status": "Stretched",
+            "elevated_pct": 23.7,
+            "format": "PDF",
+            "recipients": "leadership@worksense.internal",
+        },
+        {
+            "id": "rep_20261111_wk3",
+            "title": "Weekly Executive Stress Summary (Week 3)",
+            "scope": "All Teams (Engineering & Product)",
+            "generated_at": "11 Nov 2026, 09:00 AM",
+            "overall_status": "Steady",
+            "elevated_pct": 18.4,
+            "format": "PDF",
+            "recipients": "leadership@worksense.internal",
+        },
+        {
+            "id": "rep_20261101_oct",
+            "title": "Monthly Department Health Digest (October)",
+            "scope": "Engineering & Product Operations",
+            "generated_at": "01 Nov 2026, 10:00 AM",
+            "overall_status": "Steady",
+            "elevated_pct": 16.2,
+            "format": "PDF",
+            "recipients": "people-analytics@worksense.internal",
+        },
+    ],
+    "working_hours": {
+        "core_hours_start": "09:00",
+        "core_hours_end": "18:00",
+        "lunch_start": "12:30",
+        "lunch_end": "13:30",
+        "shift_midpoint": "13:00",
+        "after_hours_cutoff": "19:00",
+        "weekly_standard_hours": 45,
+        "work_days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+    },
+    "holidays": [
+        {"name": "Republic Day", "date": "26 Jan 2026", "type": "National holiday"},
+        {"name": "Holi", "date": "04 Mar 2026", "type": "Gazetted holiday"},
+        {"name": "Independence Day", "date": "15 Aug 2026", "type": "National holiday"},
+        {"name": "Gandhi Jayanti", "date": "02 Oct 2026", "type": "National holiday"},
+        {"name": "Dussehra", "date": "20 Oct 2026", "type": "Gazetted holiday"},
+        {"name": "Diwali (Deepavali)", "date": "08 Nov 2026", "type": "Gazetted holiday"},
+        {"name": "Christmas Day", "date": "25 Dec 2026", "type": "Gazetted holiday"},
+    ],
+    "audit_logs": [
+        {
+            "id": "log_01",
+            "timestamp": "21 Nov 2026, 17:42:10",
+            "actor": "Director of Engineering",
+            "action": "Viewed team overview",
+            "scope": "All Teams (Engineering & Product)",
+            "privacy_verification": "k=5 anonymity enforced (n=38)",
+        },
+        {
+            "id": "log_02",
+            "timestamp": "21 Nov 2026, 16:15:02",
+            "actor": "People Analytics Lead",
+            "action": "Viewed department teams list",
+            "scope": "Engineering & Product Operations",
+            "privacy_verification": "Aggregate metrics only",
+        },
+        {
+            "id": "log_03",
+            "timestamp": "21 Nov 2026, 14:02:18",
+            "actor": "Engineering Lead",
+            "action": "Attempted team view",
+            "scope": "Design Systems Core (< 5 people)",
+            "privacy_verification": "Data suppressed (n=3 < 5 threshold)",
+        },
+        {
+            "id": "log_04",
+            "timestamp": "21 Nov 2026, 11:30:45",
+            "actor": "Director of Engineering",
+            "action": "Generated on-demand PDF report",
+            "scope": "Cloud Infrastructure",
+            "privacy_verification": "Aggregated report generated",
+        },
+        {
+            "id": "log_05",
+            "timestamp": "20 Nov 2026, 18:20:11",
+            "actor": "VP of People",
+            "action": "Updated action tracker status",
+            "scope": "Protect lunch hours (In progress)",
+            "privacy_verification": "Administrative policy action",
+        },
+        {
+            "id": "log_06",
+            "timestamp": "20 Nov 2026, 10:14:33",
+            "actor": "People Operations Manager",
+            "action": "Viewed check-in participation",
+            "scope": "All Teams (Engineering & Product)",
+            "privacy_verification": "Aggregated counts only (no names)",
+        },
+    ],
+}
+
+
+@app.get("/api/manager/teams")
+def get_manager_teams():
+    """Teams and departments with status mix, trends, and k-anonymity gate (< 5 people)."""
+    team_cards = []
+    for t in TEAMS_CONFIG:
+        workforce = t["workforce"]
+        if workforce < 5:
+            team_cards.append({
+                "id": t["id"],
+                "name": t["name"],
+                "department": t["department"],
+                "workforce": workforce,
+                "is_insufficient_group": True,
+                "insufficient_message": "Not enough people to show this group",
+                "subtext": "To protect individual psychological safety, groups with fewer than 5 members cannot be displayed.",
+                "status_mix": None,
+                "pct_distribution": None,
+                "trend": None,
+                "checkin_rate": None,
+            })
+        else:
+            counts = t["counts"] or {"Steady": 18, "Stretched": 11, "Strained": 6, "Overloaded": 3}
+            prev_counts = t["prev_counts"] or {"Steady": 20, "Stretched": 11, "Strained": 5, "Overloaded": 2}
+            pct_dist = {k: round((v / max(1, workforce)) * 100, 1) for k, v in counts.items()}
+            
+            curr_elev = counts.get("Strained", 0) + counts.get("Overloaded", 0)
+            prev_elev = prev_counts.get("Strained", 0) + prev_counts.get("Overloaded", 0)
+            delta_count = curr_elev - prev_elev
+            curr_elev_pct = round((curr_elev / max(1, workforce)) * 100, 1)
+            prev_elev_pct = round((prev_elev / max(1, workforce)) * 100, 1)
+            delta_pct = round(curr_elev_pct - prev_elev_pct, 1)
+
+            checkin_done = t["checkin_done"] or int(round(workforce * 0.88))
+            checkin_rate = round((checkin_done / max(1, workforce)) * 100, 1)
+
+            team_cards.append({
+                "id": t["id"],
+                "name": t["name"],
+                "department": t["department"],
+                "workforce": workforce,
+                "is_insufficient_group": False,
+                "insufficient_message": None,
+                "status_mix": counts,
+                "pct_distribution": pct_dist,
+                "trend": {
+                    "delta_count": delta_count,
+                    "delta_pct": delta_pct,
+                    "direction": "up" if delta_count > 0 else "down" if delta_count < 0 else "steady",
+                    "label": f"{'+' if delta_pct > 0 else ''}{delta_pct}% elevated vs last week",
+                },
+                "checkin_rate": checkin_rate,
+                "checkin_done": checkin_done,
+                "weekly_outlook": t.get("weekly_trend", []),
+            })
+
+    return {
+        "teams": team_cards,
+        "total_workforce": sum(t["workforce"] for t in TEAMS_CONFIG),
+        "department_name": "Engineering & Product Operations",
+        "privacy_compliance": {
+            "k_anonymity_threshold": 5,
+            "persistent_line": "Individual data is private to each employee.",
+            "zero_identification": True,
+        },
+    }
+
+
+@app.get("/api/manager/drivers")
+def get_manager_drivers():
+    """Broad behavioral driver categories across the team."""
+    drivers = [
+        {
+            "id": "workload_hours",
+            "category": "Workload hours",
+            "affecting_pct": 42.0,
+            "headline": "Affecting 42% of the team",
+            "explanation": "Average active daily workload consistently exceeds 8.5 hours over rolling 5-day observation windows.",
+            "benchmark_pct": 25.0,
+            "impact_level": "High",
+            "status_token": "Strained",
+            "recommended_action": "Review sprint allocations and defer non-critical backlog epics.",
+        },
+        {
+            "id": "after_hours",
+            "category": "After-hours work",
+            "affecting_pct": 35.0,
+            "headline": "Affecting 35% of the team",
+            "explanation": "Routine system activity and communication timestamps detected between 7:00 PM and 8:30 AM.",
+            "benchmark_pct": 18.0,
+            "impact_level": "Moderate",
+            "status_token": "Stretched",
+            "recommended_action": "Implement scheduled quiet hours and discourage off-hours messaging.",
+        },
+        {
+            "id": "break_patterns",
+            "category": "Break patterns",
+            "affecting_pct": 29.0,
+            "headline": "Affecting 29% of the team",
+            "explanation": "Extended continuous desk stretches exceeding 90 minutes without a recovery pause, or skipped lunch breaks.",
+            "benchmark_pct": 20.0,
+            "impact_level": "Moderate",
+            "status_token": "Stretched",
+            "recommended_action": "Protect 12:30 PM - 1:30 PM calendar blocks and encourage regular micro-breaks.",
+        },
+        {
+            "id": "focus_time",
+            "category": "Focus time",
+            "affecting_pct": 24.0,
+            "headline": "Affecting 24% of the team",
+            "explanation": "High task fragmentation and calendar density preventing 90-minute blocks of uninterrupted deep work.",
+            "benchmark_pct": 15.0,
+            "impact_level": "Attention needed",
+            "status_token": "Steady",
+            "recommended_action": "Establish meeting-free focus afternoons and cluster status syncs.",
+        },
+    ]
+
+    return {
+        "department": "Engineering & Product Operations",
+        "drivers": drivers,
+        "privacy_compliance": {
+            "broad_categories_only": True,
+            "raw_metrics_redacted": True,
+            "individual_names_redacted": True,
+            "persistent_line": "Individual data is private to each employee.",
+        },
+    }
+
+
+@app.get("/api/manager/checkins")
+def get_manager_checkins():
+    """Aggregate check-in score distribution, participation rate, and week-over-week change."""
+    return {
+        "department": "Engineering & Product Operations",
+        "participation": {
+            "completion_rate_pct": 89.5,
+            "completed_count": 34,
+            "total_eligible": 38,
+            "label": "89.5% completion rate",
+            "context_sentence": "34 of 38 employees checked in today.",
+        },
+        "week_over_week_change": {
+            "participation_delta_pct": 4.5,
+            "participation_trend": "up",
+            "average_score": 1.9,
+            "average_score_prev": 2.0,
+            "score_delta": -0.1,
+            "context_sentence": "Participation increased by +4.5% compared to last week (up from 85.0%), with average strain easing slightly.",
+        },
+        "score_distribution": [
+            {"range": "1.0 - 2.0", "label": "Low strain", "status": "Steady", "count": 21, "pct": 61.8},
+            {"range": "2.1 - 3.0", "label": "Mild strain", "status": "Stretched", "count": 8, "pct": 23.5},
+            {"range": "3.1 - 4.0", "label": "Moderate strain", "status": "Strained", "count": 4, "pct": 11.8},
+            {"range": "4.1 - 5.0", "label": "High strain", "status": "Overloaded", "count": 1, "pct": 2.9},
+        ],
+        "domain_breakdown": [
+            {
+                "domain": "Exhaustion",
+                "score": 2.2,
+                "max_score": 5.0,
+                "status": "Stretched",
+                "description": "Physical and mental fatigue during the working day.",
+            },
+            {
+                "domain": "Mental distance",
+                "score": 1.8,
+                "max_score": 5.0,
+                "status": "Steady",
+                "description": "Psychological detachment and cynicism toward work tasks.",
+            },
+            {
+                "domain": "Cognitive impairment",
+                "score": 1.9,
+                "max_score": 5.0,
+                "status": "Steady",
+                "description": "Attention lapses, memory slips, and concentration disruption.",
+            },
+            {
+                "domain": "Emotional impairment",
+                "score": 1.6,
+                "max_score": 5.0,
+                "status": "Steady",
+                "description": "Heightened emotional reactivity or frustration tolerance.",
+            },
+        ],
+        "privacy_compliance": {
+            "aggregate_distribution_only": True,
+            "k_anonymity_threshold": 5,
+            "persistent_line": "Individual data is private to each employee.",
+        },
+    }
+
+
+@app.get("/api/manager/actions")
+def get_manager_actions():
+    """Suggested team-level interventions with status tracker and before/after status mix."""
+    before_counts = {"Steady": 16, "Stretched": 12, "Strained": 7, "Overloaded": 3}
+    after_counts = {"Steady": 22, "Stretched": 10, "Strained": 4, "Overloaded": 2}
+    total = 38
+
+    return {
+        "interventions": MANAGER_STATE["actions"],
+        "status_summary": {
+            "planned_count": sum(1 for a in MANAGER_STATE["actions"] if a["status"] == "Planned"),
+            "in_progress_count": sum(1 for a in MANAGER_STATE["actions"] if a["status"] == "In progress"),
+            "done_count": sum(1 for a in MANAGER_STATE["actions"] if a["status"] == "Done"),
+        },
+        "before_after_status_mix": {
+            "before": {
+                "counts": before_counts,
+                "pct": {k: round((v / total) * 100, 1) for k, v in before_counts.items()},
+                "label": "Before Interventions (Baseline)",
+            },
+            "after": {
+                "counts": after_counts,
+                "pct": {k: round((v / total) * 100, 1) for k, v in after_counts.items()},
+                "label": "Observed / Projected Mix (Post-Intervention)",
+            },
+            "shift_summary": "+15.8% increase in Steady and -10.5% reduction in Strained or Overloaded.",
+        },
+        "privacy_compliance": {
+            "team_level_only": True,
+            "persistent_line": "Individual data is private to each employee.",
+        },
+    }
+
+
+@app.post("/api/manager/actions/update")
+def update_manager_action(req: ActionUpdateRequest):
+    """Update status of a team intervention (Planned / In progress / Done)."""
+    valid_statuses = ["Planned", "In progress", "Done"]
+    if req.status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Status must be one of {valid_statuses}")
+
+    action = next((a for a in MANAGER_STATE["actions"] if a["id"] == req.action_id), None)
+    if not action:
+        raise HTTPException(status_code=404, detail="Action not found")
+
+    old_status = action["status"]
+    action["status"] = req.status
+
+    now_str = datetime.now(timezone.utc).strftime("%d %b %Y, %H:%M:%S")
+    MANAGER_STATE["audit_logs"].insert(0, {
+        "id": f"log_{len(MANAGER_STATE['audit_logs']) + 1:02d}",
+        "timestamp": now_str,
+        "actor": "Engineering Director",
+        "action": f"Updated action '{action['title']}' to {req.status} (was {old_status})",
+        "scope": action["title"],
+        "privacy_verification": "Administrative policy action",
+    })
+
+    return {"status": "success", "action": action}
+
+
+@app.get("/api/manager/reports")
+def get_manager_reports():
+    """Scheduled and on-demand summaries of team stress levels."""
+    return {
+        "scheduled_reports": [
+            {
+                "id": "sched_weekly",
+                "name": "Weekly Executive Stress Summary",
+                "cadence": "Every Monday at 09:00 AM IST",
+                "scope": "All Teams (Engineering & Product)",
+                "recipients": "leadership@worksense.internal, engineering-directors@worksense.internal",
+                "format": "PDF + Executive Email Digest",
+                "status": "Active",
+            },
+            {
+                "id": "sched_monthly",
+                "name": "Monthly Department Health Digest",
+                "cadence": "1st of every month at 10:00 AM IST",
+                "scope": "Engineering & Product Operations",
+                "recipients": "people-analytics@worksense.internal, hr-leadership@worksense.internal",
+                "format": "PDF + Interactive Dashboard Link",
+                "status": "Active",
+            },
+        ],
+        "past_reports": MANAGER_STATE["reports"],
+        "available_scopes": [t for t in TEAMS_CONFIG if t["workforce"] >= 5],
+        "privacy_compliance": {
+            "persistent_line": "Individual data is private to each employee.",
+            "zero_identification": True,
+        },
+    }
+
+
+@app.post("/api/manager/reports/generate")
+def generate_manager_report(req: ReportGenerateRequest):
+    """Generate an on-demand PDF / email stress report."""
+    team = next((t for t in TEAMS_CONFIG if t["id"] == req.team_id), TEAMS_CONFIG[0])
+    if team["workforce"] < 5:
+        raise HTTPException(status_code=400, detail="Cannot generate report for group with fewer than 5 members")
+
+    now = datetime.now(timezone.utc)
+    now_str = now.strftime("%d %b %Y, %H:%M")
+    new_report_id = f"rep_{now.strftime('%Y%m%d_%H%M%S')}"
+
+    counts = team["counts"] or {"Steady": 18, "Stretched": 11, "Strained": 6, "Overloaded": 3}
+    elevated_count = counts.get("Strained", 0) + counts.get("Overloaded", 0)
+
+    new_report = {
+        "id": new_report_id,
+        "title": f"On-Demand Stress Summary - {team['name']}",
+        "scope": team["name"],
+        "generated_at": now_str,
+        "overall_status": "Stretched" if elevated_count > 5 else "Steady",
+        "elevated_pct": round((elevated_count / max(1, team["workforce"])) * 100, 1),
+        "format": "PDF" if req.dispatch_channel == "download" else "Email",
+        "recipients": req.recipient_email or "leadership@worksense.internal",
+    }
+    MANAGER_STATE["reports"].insert(0, new_report)
+
+    MANAGER_STATE["audit_logs"].insert(0, {
+        "id": f"log_{len(MANAGER_STATE['audit_logs']) + 1:02d}",
+        "timestamp": now.strftime("%d %b %Y, %H:%M:%S"),
+        "actor": "Engineering Director",
+        "action": f"Generated on-demand report for {team['name']}",
+        "scope": team["name"],
+        "privacy_verification": "k=5 anonymity verified",
+    })
+
+    return {"status": "success", "report": new_report}
+
+
+@app.get("/api/manager/admin")
+def get_manager_admin():
+    """Working hours, holidays, team setup, and audit logs."""
+    teams_summary = []
+    for t in TEAMS_CONFIG:
+        teams_summary.append({
+            "id": t["id"],
+            "name": t["name"],
+            "department": t["department"],
+            "workforce": t["workforce"],
+            "meets_privacy_threshold": t["workforce"] >= 5,
+            "status_label": "Active (Aggregated)" if t["workforce"] >= 5 else "Protected (< 5 people redacted)",
+        })
+
+    return {
+        "working_hours": MANAGER_STATE["working_hours"],
+        "holidays": MANAGER_STATE["holidays"],
+        "teams_setup": teams_summary,
+        "audit_logs": MANAGER_STATE["audit_logs"],
+        "privacy_compliance": {
+            "k_anonymity_threshold": 5,
+            "persistent_line": "Individual data is private to each employee.",
+        },
+    }
+
+
+@app.post("/api/manager/admin/working-hours")
+def update_manager_working_hours(req: WorkingHoursUpdateRequest):
+    """Update core working hours and schedule parameters."""
+    MANAGER_STATE["working_hours"]["core_hours_start"] = req.core_hours_start
+    MANAGER_STATE["working_hours"]["core_hours_end"] = req.core_hours_end
+    MANAGER_STATE["working_hours"]["lunch_start"] = req.lunch_start
+    MANAGER_STATE["working_hours"]["lunch_end"] = req.lunch_end
+    MANAGER_STATE["working_hours"]["weekly_standard_hours"] = req.weekly_standard_hours
+
+    now_str = datetime.now(timezone.utc).strftime("%d %b %Y, %H:%M:%S")
+    MANAGER_STATE["audit_logs"].insert(0, {
+        "id": f"log_{len(MANAGER_STATE['audit_logs']) + 1:02d}",
+        "timestamp": now_str,
+        "actor": "Engineering Director",
+        "action": f"Updated core hours to {req.core_hours_start}-{req.core_hours_end}",
+        "scope": "Working Hours Policy",
+        "privacy_verification": "Admin Policy Change",
+    })
+
+    return {"status": "success", "working_hours": MANAGER_STATE["working_hours"]}
+
+
 # Serve the Frontend HTML Single-Page App
 STATIC_DIR = BASE_DIR / "static"
 STATIC_DIR.mkdir(parents=True, exist_ok=True)

@@ -1128,40 +1128,42 @@
         const pct = calibration_progress.progress_pct || Math.round((daysCollected / daysRequired) * 100);
         const radius = 38;
         const circumference = 2 * Math.PI * radius;
-        const strmference - (pct / 100) * circumference;
+        const strokeDashoffset = circumference - (pct / 100) * circumference;
 
         return (
           <div className="ws-card p-6 border-l-4" style={{ borderLeftColor: "var(--status-calibrating)" }}>
-            <                    x flex-col sm:flex-row sm:items-center justify-between gap-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
               <div className="space-y-2">
                 <span className="text-xs font-semibold text-[var(--status-calibrating)] uppercase tracking-wider">
                   Baseline learning phase
                 </span>
-                <h2 className="text-xl font-bold text-">
+                <h2 className="text-xl font-bold text-[var(--text-primary)]">
                   Learning your normal: day {daysCollected} of {daysRequired}
                 </h2>
-                <p className="text-sm text-[var(--text-secondary)] max-w-xl                    
+                <p className="text-sm text-[var(--text-secondary)] max-w-xl leading-relaxed">
                   WorkSense is observing your desktop habits across typing pace, continuous focus stretches, and breaks to establish your personal baseline. No burnout status is generated during this 14-day calibration window.
                 </p>
                 <div className="text-xs text-[var(--text-muted)] pt-1">
-                  Daily check-ins completed: <strong className="text-[var(--text-primary)]">{calibration_progress.bat12_completed || daysCollected/strong>
+                  Daily check-ins completed: <strong className="text-[var(--text-primary)]">{calibration_progress.bat12_completed || daysCollected} of {daysRequired}</strong>
                 </div>
               </div>
 
               <div className="relative shrink-0 flex items-center justify-center">
-                <svg className="w-24 h-24 transfor                    Box="0 0 100 100">
+                <svg className="w-24 h-24 transform -rotate-90" viewBox="0 0 100 100">
                   <circle
                     cx="50"
                     cy="50"
                     r={radius}
                     stroke="var(--bg-card-subtle)"
                     strokeWidth="8"
-                    fill=           />
+                    fill="transparent"
+                  />
                   <circle
                     cx="50"
                     cy="50"
                     r={radius}
-                    stroke="var(--status-calibrating)                        strokeWidth="8"
+                    stroke="var(--status-calibrating)"
+                    strokeWidth="8"
                     strokeDasharray={circumference}
                     strokeDashoffset={strokeDashoffset}
                     strokeLinecap="round"
@@ -2908,7 +2910,7 @@
         department: "Infrastructure"
       };
 
-      // Navigation Items for Employee (Today, Trends & telemetry, Daily check-in, About)
+      // Navigation Items for Employee and Manager Portals
       const navItems = viewRole === "employee" ? [
         {
           id: "today",
@@ -2938,6 +2940,24 @@
           )
         },
         {
+          id: "suggestions",
+          label: "Suggestions",
+          icon: (
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+          )
+        },
+        {
+          id: "privacy",
+          label: "Privacy & Data",
+          icon: (
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+          )
+        },
+        {
           id: "about",
           label: "About WorkSense",
           icon: (
@@ -2949,7 +2969,7 @@
       ] : [
         {
           id: "overview",
-          label: "Team overview",
+          label: "Overview",
           icon: (
             <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -2957,11 +2977,57 @@
           )
         },
         {
-          id: "trends",
-          label: "30-day trajectory",
+          id: "teams",
+          label: "Teams",
           icon: (
             <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+          )
+        },
+        {
+          id: "drivers",
+          label: "Drivers",
+          icon: (
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          )
+        },
+        {
+          id: "checkins",
+          label: "Check-ins",
+          icon: (
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+          )
+        },
+        {
+          id: "actions",
+          label: "Actions",
+          icon: (
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          )
+        },
+        {
+          id: "reports",
+          label: "Reports",
+          icon: (
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          )
+        },
+        {
+          id: "admin",
+          label: "Admin",
+          icon: (
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           )
         },
@@ -3112,6 +3178,15 @@
                       <EmployeeCheckInPageView
                         data={employeeData}
                         onOpenModal={handleOpenCheckInModal}
+                      />
+                    ) : (currentRoute === "suggestions" || currentRoute === "/suggestions") ? (
+                      <EmployeeSuggestionsPageView
+                        data={employeeData}
+                      />
+                    ) : (currentRoute === "privacy" || currentRoute === "/privacy") ? (
+                      <EmployeePrivacyPageView
+                        data={employeeData}
+                        onTrackingPauseToggle={() => loadEmployeeData(selectedPersonaId, isDemoMode ? "demo" : "live")}
                       />
                     ) : (
                       // Route: about
@@ -3266,6 +3341,1384 @@
       );
     }
 
+
+    // =========================================================================
+    // MANAGER PORTAL SUB-COMPONENTS & REMAINING PAGES
+    // =========================================================================
+
+    function PersistentPrivacyBanner() {
+      return (
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] shadow-xs">
+          <svg className="w-3.5 h-3.5 text-[var(--primary)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+          <span className="font-semibold text-[var(--text-primary)]">Individual data is private to each employee.</span>
+        </div>
+      );
+    }
+
+    function getManagerStatusBadge(status) {
+      if (status === "Steady") {
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[var(--status-steady-bg)] text-[var(--status-steady)] border border-[var(--status-steady)]/20">
+            <svg className="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
+            Steady
+          </span>
+        );
+      }
+      if (status === "Stretched") {
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[var(--status-stretched-bg)] text-[var(--status-stretched)] border border-[var(--status-stretched)]/20">
+            <svg className="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 10.586V7z" clipRule="evenodd" />
+            </svg>
+            Stretched
+          </span>
+        );
+      }
+      if (status === "Strained") {
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[var(--status-strained-bg)] text-[var(--status-strained)] border border-[var(--status-strained)]/20">
+            <svg className="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            Strained
+          </span>
+        );
+      }
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[var(--status-overloaded-bg)] text-[var(--status-overloaded)] border border-[var(--status-overloaded)]/20">
+          <svg className="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+          </svg>
+          Overloaded
+        </span>
+      );
+    }
+
+    // -------------------------------------------------------------------------
+    // PAGE 1: TEAMS (/teams)
+    // -------------------------------------------------------------------------
+    function ManagerTeamsPageView({ setCurrentRoute, onSelectTeam }) {
+      const [teamsData, setTeamsData] = useState(null);
+      const [loading, setLoading] = useState(true);
+
+      useEffect(() => {
+        fetch("/api/manager/teams")
+          .then(res => res.json())
+          .then(data => {
+            setTeamsData(data);
+            setLoading(false);
+          })
+          .catch(err => {
+            console.error("Error loading manager teams:", err);
+            setLoading(false);
+          });
+      }, []);
+
+      if (loading) {
+        return (
+          <div className="space-y-6">
+            <div className="h-24 ws-skeleton rounded-2xl" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="h-64 ws-skeleton rounded-2xl" />
+              <div className="h-64 ws-skeleton rounded-2xl" />
+            </div>
+          </div>
+        );
+      }
+
+      const teams = teamsData?.teams || [];
+
+      return (
+        <div className="space-y-6">
+          <div className="ws-card p-6 space-y-3">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
+                  Manager portal &bull; Teams
+                </span>
+                <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] mt-0.5">
+                  Teams and departments
+                </h2>
+                <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                  Departmental breakdown with active status mix, rolling 4-week trend, and minimum group size protection.
+                </p>
+              </div>
+              <PersistentPrivacyBanner />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 pt-2 text-xs text-[var(--text-secondary)] border-t border-[var(--border-subtle)]">
+              <span className="px-3 py-1 rounded-full bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)] font-medium">
+                Total monitored: <strong className="text-[var(--text-primary)]">{teamsData?.total_workforce || 38} members</strong>
+              </span>
+              <span className="px-3 py-1 rounded-full bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)] font-medium">
+                Active reporting teams: <strong className="text-[var(--text-primary)]">{teams.filter(t => !t.is_insufficient_group).length} teams</strong>
+              </span>
+              <span className="px-3 py-1 rounded-full bg-[var(--status-strained-bg)] text-[var(--status-strained)] border border-[var(--status-strained)]/20 font-medium">
+                Protected (group size &lt; 5): <strong>{teams.filter(t => t.is_insufficient_group).length} team</strong>
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {teams.map((t) => {
+              if (t.is_insufficient_group) {
+                return (
+                  <div key={t.id} className="ws-card p-6 flex flex-col justify-between border-dashed border-[var(--status-strained)]/40 bg-[var(--bg-card-subtle)]/50">
+                    <div>
+                      <div className="flex items-start justify-between gap-3 mb-4">
+                        <div>
+                          <span className="text-xs text-[var(--text-muted)] font-medium">{t.department}</span>
+                          <h3 className="text-base font-bold text-[var(--text-primary)]">{t.name}</h3>
+                        </div>
+                        <span className="text-xs px-2.5 py-1 rounded-full bg-[var(--bg-card)] text-[var(--text-muted)] border border-[var(--border-subtle)] font-medium">
+                          Fewer than 5 people
+                        </span>
+                      </div>
+
+                      <div className="p-6 rounded-xl bg-[var(--bg-card)] border border-[var(--border-subtle)] text-center space-y-3">
+                        <div className="w-10 h-10 rounded-full bg-[var(--status-strained-bg)] text-[var(--status-strained)] flex items-center justify-center mx-auto">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-[var(--text-primary)]">{t.insufficient_message}</h4>
+                          <p className="text-xs text-[var(--text-secondary)] mt-1 max-w-sm mx-auto leading-relaxed">
+                            {t.subtext}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-[11px] text-[var(--text-muted)] text-center mt-4">
+                      k-Anonymity guarantee &bull; Suppressed by WorkSense privacy protocol
+                    </div>
+                  </div>
+                );
+              }
+
+              const counts = t.status_mix;
+              const total = t.workforce;
+              const pct = t.pct_distribution;
+              const trend = t.trend;
+
+              return (
+                <div key={t.id} className="ws-card p-6 flex flex-col justify-between space-y-5">
+                  <div>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <span className="text-xs text-[var(--text-muted)] font-medium">{t.department}</span>
+                        <h3 className="text-base font-bold text-[var(--text-primary)]">{t.name}</h3>
+                      </div>
+                      <span className="text-xs px-2.5 py-1 rounded-full bg-[var(--primary-subtle)] text-[var(--primary)] font-semibold border border-[var(--primary)]/20">
+                        {total} members
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 mt-4">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-semibold text-[var(--text-primary)]">Status mix</span>
+                        <span className="text-[var(--text-muted)]">Rolling 5-day window</span>
+                      </div>
+                      <div className="w-full h-3 rounded-full overflow-hidden flex shadow-inner bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)]">
+                        <div style={{ width: `${pct.Steady}%`, backgroundColor: "var(--status-steady)" }} title={`Steady: ${counts.Steady} (${pct.Steady}%)`} />
+                        <div style={{ width: `${pct.Stretched}%`, backgroundColor: "var(--status-stretched)" }} title={`Stretched: ${counts.Stretched} (${pct.Stretched}%)`} />
+                        <div style={{ width: `${pct.Strained}%`, backgroundColor: "var(--status-strained)" }} title={`Strained: ${counts.Strained} (${pct.Strained}%)`} />
+                        <div style={{ width: `${pct.Overloaded}%`, backgroundColor: "var(--status-overloaded)" }} title={`Overloaded: ${counts.Overloaded} (${pct.Overloaded}%)`} />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 text-xs">
+                      <div className="p-2 rounded-lg bg-[var(--status-steady-bg)] border border-[var(--status-steady)]/20 flex flex-col">
+                        <span className="text-[11px] text-[var(--status-steady)] font-semibold flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--status-steady)]" /> Steady
+                        </span>
+                        <span className="font-bold text-[var(--text-primary)] text-sm mt-0.5">{counts.Steady} ({pct.Steady}%)</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-[var(--status-stretched-bg)] border border-[var(--status-stretched)]/20 flex flex-col">
+                        <span className="text-[11px] text-[var(--status-stretched)] font-semibold flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--status-stretched)]" /> Stretched
+                        </span>
+                        <span className="font-bold text-[var(--text-primary)] text-sm mt-0.5">{counts.Stretched} ({pct.Stretched}%)</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-[var(--status-strained-bg)] border border-[var(--status-strained)]/20 flex flex-col">
+                        <span className="text-[11px] text-[var(--status-strained)] font-semibold flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--status-strained)]" /> Strained
+                        </span>
+                        <span className="font-bold text-[var(--text-primary)] text-sm mt-0.5">{counts.Strained} ({pct.Strained}%)</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-[var(--status-overloaded-bg)] border border-[var(--status-overloaded)]/20 flex flex-col">
+                        <span className="text-[11px] text-[var(--status-overloaded)] font-semibold flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--status-overloaded)]" /> Overloaded
+                        </span>
+                        <span className="font-bold text-[var(--text-primary)] text-sm mt-0.5">{counts.Overloaded} ({pct.Overloaded}%)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-md font-semibold text-[11px] flex items-center gap-1 ${
+                        trend.direction === "up" ? "bg-[var(--status-strained-bg)] text-[var(--status-strained)]" : "bg-[var(--status-steady-bg)] text-[var(--status-steady)]"
+                      }`}>
+                        {trend.direction === "up" ? "▲" : trend.direction === "down" ? "▼" : "•"} {trend.label}
+                      </span>
+                      <span className="text-[var(--text-muted)] text-[11px]">
+                        Check-ins: <strong className="text-[var(--text-primary)]">{t.checkin_rate}%</strong> ({t.checkin_done}/{t.workforce})
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => onSelectTeam && onSelectTeam(t.id)}
+                      className="px-3 py-1.5 rounded-xl bg-[var(--primary)] text-white font-medium hover:bg-[var(--primary-hover)] transition-colors shadow-xs"
+                    >
+                      View overview &rarr;
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // -------------------------------------------------------------------------
+    // PAGE 2: DRIVERS (/drivers)
+    // -------------------------------------------------------------------------
+    const DEFAULT_DRIVERS = [
+      {
+        id: "workload_hours",
+        category: "Workload hours",
+        affecting_pct: 42.0,
+        headline: "Affecting 42% of the team",
+        explanation: "Average active daily workload consistently exceeds 8.5 hours over rolling 5-day observation windows.",
+        benchmark_pct: 25.0,
+        status_token: "Strained",
+        recommended_action: "Review sprint allocations and defer non-critical backlog epics."
+      },
+      {
+        id: "after_hours",
+        category: "After-hours work",
+        affecting_pct: 35.0,
+        headline: "Affecting 35% of the team",
+        explanation: "Routine system activity and communication timestamps detected between 7:00 PM and 8:30 AM.",
+        benchmark_pct: 18.0,
+        status_token: "Stretched",
+        recommended_action: "Implement scheduled quiet hours and discourage off-hours messaging."
+      },
+      {
+        id: "break_patterns",
+        category: "Break patterns",
+        affecting_pct: 29.0,
+        headline: "Affecting 29% of the team",
+        explanation: "Extended continuous desk stretches exceeding 90 minutes without a recovery pause, or skipped lunch breaks.",
+        benchmark_pct: 20.0,
+        status_token: "Stretched",
+        recommended_action: "Protect 12:30 PM - 1:30 PM calendar blocks and encourage regular micro-breaks."
+      },
+      {
+        id: "focus_time",
+        category: "Focus time",
+        affecting_pct: 24.0,
+        headline: "Affecting 24% of the team",
+        explanation: "High task fragmentation and calendar density preventing 90-minute blocks of uninterrupted deep work.",
+        benchmark_pct: 15.0,
+        status_token: "Steady",
+        recommended_action: "Establish meeting-free focus afternoons and cluster status syncs."
+      }
+    ];
+
+    function ManagerDriversPageView() {
+      const [driversData, setDriversData] = useState({ drivers: DEFAULT_DRIVERS, department: "Engineering & Product Operations" });
+      const [loading, setLoading] = useState(false);
+
+      useEffect(() => {
+        fetch("/api/manager/drivers")
+          .then(res => res.json())
+          .then(data => {
+            setDriversData(data);
+            setLoading(false);
+          })
+          .catch(err => {
+            console.error("Error loading drivers:", err);
+            setLoading(false);
+          });
+      }, []);
+
+      if (loading) {
+        return (
+          <div className="space-y-6">
+            <div className="h-24 ws-skeleton rounded-2xl" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="h-48 ws-skeleton rounded-2xl" />
+              <div className="h-48 ws-skeleton rounded-2xl" />
+            </div>
+          </div>
+        );
+      }
+
+      const drivers = driversData?.drivers || [];
+
+      return (
+        <div className="space-y-6">
+          <div className="ws-card p-6 space-y-3">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
+                  Manager portal &bull; Drivers
+                </span>
+                <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] mt-0.5">
+                  Behavioral drivers
+                </h2>
+                <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                  Broad categories only. Aggregate workload patterns contributing to team strain across {driversData?.department}.
+                </p>
+              </div>
+              <PersistentPrivacyBanner />
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)] flex items-start gap-2.5 text-xs text-[var(--text-secondary)] leading-relaxed">
+              <svg className="w-4 h-4 text-[var(--primary)] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <strong className="text-[var(--text-primary)]">Broad categories privacy guarantee:</strong> To ensure zero individual tracking, WorkSense aggregates telemetry into four systemic work dimensions. No keystrokes, message texts, or individual names are ever inspected or stored.
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {drivers.map((drv) => (
+              <div key={drv.id} className="ws-card p-6 flex flex-col justify-between space-y-4">
+                <div>
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div>
+                      <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
+                        {drv.category}
+                      </span>
+                      <h3 className="text-lg font-bold text-[var(--text-primary)] mt-0.5">
+                        {drv.headline}
+                      </h3>
+                    </div>
+                    {getManagerStatusBadge(drv.status_token)}
+                  </div>
+
+                  <div className="space-y-1.5 my-3">
+                    <div className="flex justify-between text-xs text-[var(--text-secondary)]">
+                      <span>Share of monitored team</span>
+                      <span className="font-bold text-[var(--text-primary)]">{drv.affecting_pct}%</span>
+                    </div>
+                    <div className="w-full h-2.5 rounded-full bg-[var(--bg-card-subtle)] overflow-hidden border border-[var(--border-subtle)] relative">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${drv.affecting_pct}%`,
+                          backgroundColor: drv.status_token === "Strained" ? "var(--status-strained)" : drv.status_token === "Stretched" ? "var(--status-stretched)" : "var(--status-steady)"
+                        }}
+                      />
+                      <div
+                        className="absolute top-0 bottom-0 w-0.5 bg-[var(--text-muted)] z-10"
+                        style={{ left: `${drv.benchmark_pct}%` }}
+                        title={`Org benchmark: ${drv.benchmark_pct}%`}
+                      />
+                    </div>
+                    <div className="flex justify-between text-[11px] text-[var(--text-muted)]">
+                      <span>Org benchmark: {drv.benchmark_pct}%</span>
+                      <span className="text-[var(--status-strained)] font-medium">+{Math.round(drv.affecting_pct - drv.benchmark_pct)}% above benchmark</span>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-[var(--text-secondary)] leading-relaxed mt-2">
+                    {drv.explanation}
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)] text-xs space-y-1">
+                  <span className="font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 text-[var(--primary)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                    Suggested team intervention:
+                  </span>
+                  <p className="text-[var(--text-secondary)] leading-relaxed pl-5">
+                    {drv.recommended_action}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // -------------------------------------------------------------------------
+    // PAGE 3: CHECK-INS (/checkins)
+    // -------------------------------------------------------------------------
+    function ManagerCheckinsPageView() {
+      const [checkinsData, setCheckinsData] = useState(null);
+      const [loading, setLoading] = useState(true);
+
+      useEffect(() => {
+        fetch("/api/manager/checkins")
+          .then(res => res.json())
+          .then(data => {
+            setCheckinsData(data);
+            setLoading(false);
+          })
+          .catch(err => {
+            console.error("Error loading checkins:", err);
+            setLoading(false);
+          });
+      }, []);
+
+      if (loading) {
+        return (
+          <div className="space-y-6">
+            <div className="h-24 ws-skeleton rounded-2xl" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div className="h-28 ws-skeleton rounded-2xl" />
+              <div className="h-28 ws-skeleton rounded-2xl" />
+              <div className="h-28 ws-skeleton rounded-2xl" />
+            </div>
+          </div>
+        );
+      }
+
+      const { participation, week_over_week_change, score_distribution, domain_breakdown } = checkinsData || {};
+
+      return (
+        <div className="space-y-6">
+          <div className="ws-card p-6 space-y-3">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
+                  Manager portal &bull; Check-ins
+                </span>
+                <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] mt-0.5">
+                  Daily check-in telemetry
+                </h2>
+                <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                  Aggregate Burnout Assessment Tool (BAT-12) participation, score distribution, and clinical burnout domains.
+                </p>
+              </div>
+              <PersistentPrivacyBanner />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="ws-card p-5 space-y-2">
+              <div className="flex justify-between items-start">
+                <span className="text-xs font-semibold text-[var(--text-muted)]">Check-in participation</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--status-steady-bg)] text-[var(--status-steady)] font-bold">
+                  High
+                </span>
+              </div>
+              <div className="text-2xl font-bold text-[var(--text-primary)]">
+                {participation?.completion_rate_pct}%
+              </div>
+              <div className="w-full h-2 rounded-full bg-[var(--bg-card-subtle)] overflow-hidden">
+                <div className="h-full rounded-full bg-[var(--primary)]" style={{ width: `${participation?.completion_rate_pct}%` }} />
+              </div>
+              <p className="text-xs text-[var(--text-secondary)]">
+                {participation?.context_sentence}
+              </p>
+            </div>
+
+            <div className="ws-card p-5 space-y-2">
+              <div className="flex justify-between items-start">
+                <span className="text-xs font-semibold text-[var(--text-muted)]">Change vs last week</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--status-steady-bg)] text-[var(--status-steady)] font-bold">
+                  +{week_over_week_change?.participation_delta_pct}%
+                </span>
+              </div>
+              <div className="text-2xl font-bold text-[var(--text-primary)]">
+                {week_over_week_change?.average_score} / 5.0
+              </div>
+              <div className="text-xs text-[var(--text-muted)]">
+                Mean team check-in score ({week_over_week_change?.score_delta > 0 ? "+" : ""}{week_over_week_change?.score_delta} shift)
+              </div>
+              <p className="text-xs text-[var(--text-secondary)]">
+                {week_over_week_change?.context_sentence}
+              </p>
+            </div>
+
+            <div className="ws-card p-5 space-y-2">
+              <div className="flex justify-between items-start">
+                <span className="text-xs font-semibold text-[var(--text-muted)]">Scientific grounding</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--bg-card-subtle)] text-[var(--text-secondary)] font-medium">
+                  WHO / BAT-12
+                </span>
+              </div>
+              <div className="text-base font-bold text-[var(--text-primary)]">
+                Burnout Assessment Tool
+              </div>
+              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                Validated self-report instrument evaluating 4 core dimensions: Exhaustion, Mental distance, Cognitive impairment, and Emotional impairment.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="ws-card p-6 space-y-4">
+              <div>
+                <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
+                  Strain Distribution
+                </span>
+                <h3 className="text-base font-bold text-[var(--text-primary)] mt-0.5">
+                  Aggregate check-in score distribution
+                </h3>
+                <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                  Categorized according to standardized European clinical cutoffs.
+                </p>
+              </div>
+
+              <div className="space-y-3 pt-2">
+                {(score_distribution || []).map((b, i) => (
+                  <div key={i} className="p-3 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)] space-y-1.5">
+                    <div className="flex justify-between items-center text-xs">
+                      <div className="flex items-center gap-2">
+                        {getManagerStatusBadge(b.status)}
+                        <span className="font-semibold text-[var(--text-primary)]">{b.label} ({b.range})</span>
+                      </div>
+                      <span className="font-bold text-[var(--text-primary)]">{b.count} ({b.pct}%)</span>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-[var(--bg-card)] overflow-hidden border border-[var(--border-subtle)]">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${b.pct}%`,
+                          backgroundColor: b.status === "Steady" ? "var(--status-steady)" : b.status === "Stretched" ? "var(--status-stretched)" : b.status === "Strained" ? "var(--status-strained)" : "var(--status-overloaded)"
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="ws-card p-6 space-y-4">
+              <div>
+                <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
+                  Clinical Domains
+                </span>
+                <h3 className="text-base font-bold text-[var(--text-primary)] mt-0.5">
+                  BAT-12 domain breakdown
+                </h3>
+                <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                  Mean aggregate score across the 4 core dimensions (1.0 to 5.0 scale).
+                </p>
+              </div>
+
+              <div className="space-y-3 pt-2">
+                {(domain_breakdown || []).map((dom, i) => (
+                  <div key={i} className="p-3 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)] space-y-1.5">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-bold text-[var(--text-primary)]">{dom.domain}</span>
+                      <div className="flex items-center gap-2">
+                        {getManagerStatusBadge(dom.status)}
+                        <span className="font-bold text-[var(--primary)]">{dom.score} / {dom.max_score}</span>
+                      </div>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-[var(--bg-card)] overflow-hidden border border-[var(--border-subtle)]">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${(dom.score / dom.max_score) * 100}%`,
+                          backgroundColor: dom.status === "Strained" ? "var(--status-strained)" : dom.status === "Stretched" ? "var(--status-stretched)" : "var(--status-steady)"
+                        }}
+                      />
+                    </div>
+                    <p className="text-[11px] text-[var(--text-muted)]">{dom.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // -------------------------------------------------------------------------
+    // PAGE 4: ACTIONS (/actions)
+    // -------------------------------------------------------------------------
+    const DEFAULT_ACTIONS = [
+      {
+        id: "act_workload_review",
+        title: "Workload review",
+        category: "Workload hours",
+        description: "Rebalance sprint commitments and defer non-urgent backlog epics to relieve sustained overload.",
+        status: "In progress",
+        target_date: "18 Nov 2026",
+        owner: "Engineering Leads",
+        notes: "Discussed in sprint retrospective. 3 secondary epics deferred."
+      },
+      {
+        id: "act_no_meeting",
+        title: "No-meeting blocks",
+        category: "Focus time",
+        description: "Establish company-wide meeting-free Wednesday afternoons (1:00 PM - 5:00 PM) to restore deep focus time.",
+        status: "Planned",
+        target_date: "23 Nov 2026",
+        owner: "Product & Operations",
+        notes: "Calendar policy drafted, awaiting final sign-off."
+      },
+      {
+        id: "act_encourage_leave",
+        title: "Encourage leave",
+        category: "Extended stretches",
+        description: "Identify teams with high accumulated PTO balances and encourage scheduled long weekends before quarter-end.",
+        status: "Done",
+        target_date: "10 Nov 2026",
+        owner: "People Operations",
+        notes: "Completed reminder campaign; 12 team members scheduled recovery days."
+      },
+      {
+        id: "act_protect_lunch",
+        title: "Protect lunch hours",
+        category: "Break patterns",
+        description: "Calendar auto-block 12:30 PM - 1:30 PM across all departments with Slack/Teams quiet notifications.",
+        status: "In progress",
+        target_date: "15 Nov 2026",
+        owner: "Engineering Director",
+        notes: "Calendar block active for 32/38 members; tracking midday recovery."
+      }
+    ];
+
+    function ManagerActionsPageView() {
+      const [actionsData, setActionsData] = useState({
+        interventions: DEFAULT_ACTIONS,
+        status_summary: { planned_count: 1, in_progress_count: 2, done_count: 1 },
+        before_after_status_mix: {
+          before: { counts: { Steady: 16, Stretched: 12, Strained: 7, Overloaded: 3 }, pct: { Steady: 42.1, Stretched: 31.6, Strained: 18.4, Overloaded: 7.9 }, label: "Before Interventions (Baseline)" },
+          after: { counts: { Steady: 22, Stretched: 10, Strained: 4, Overloaded: 2 }, pct: { Steady: 57.9, Stretched: 26.3, Strained: 10.5, Overloaded: 5.3 }, label: "Observed / Projected Mix (Post-Intervention)" },
+          shift_summary: "+15.8% increase in Steady and -10.5% reduction in Strained or Overloaded."
+        }
+      });
+      const [loading, setLoading] = useState(false);
+      const [updatingId, setUpdatingId] = useState(null);
+      const [toastMsg, setToastMsg] = useState("");
+
+      const loadActions = () => {
+        fetch("/api/manager/actions")
+          .then(res => res.json())
+          .then(data => {
+            setActionsData(data);
+            setLoading(false);
+          })
+          .catch(err => {
+            console.error("Error loading actions:", err);
+            setLoading(false);
+          });
+      };
+
+      useEffect(() => {
+        loadActions();
+      }, []);
+
+      const handleStatusChange = (actionId, newStatus) => {
+        setUpdatingId(actionId);
+        fetch("/api/manager/actions/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action_id: actionId, status: newStatus })
+        })
+          .then(res => res.json())
+          .then(() => {
+            setUpdatingId(null);
+            setToastMsg(`Action status updated to "${newStatus}"`);
+            loadActions();
+            setTimeout(() => setToastMsg(""), 3000);
+          })
+          .catch(err => {
+            console.error("Error updating action:", err);
+            setUpdatingId(null);
+          });
+      };
+
+      if (loading) {
+        return (
+          <div className="space-y-6">
+            <div className="h-24 ws-skeleton rounded-2xl" />
+            <div className="h-48 ws-skeleton rounded-2xl" />
+            <div className="h-64 ws-skeleton rounded-2xl" />
+          </div>
+        );
+      }
+
+      const { interventions, before_after_status_mix, status_summary } = actionsData || {};
+      const before = before_after_status_mix?.before;
+      const after = before_after_status_mix?.after;
+
+      return (
+        <div className="space-y-6">
+          {toastMsg && (
+            <div className="fixed top-16 right-6 z-50 p-3 rounded-xl bg-[var(--primary)] text-white text-xs font-semibold shadow-lg flex items-center gap-2 animate-bounce">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+              </svg>
+              {toastMsg}
+            </div>
+          )}
+
+          <div className="ws-card p-6 space-y-3">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
+                  Manager portal &bull; Actions
+                </span>
+                <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] mt-0.5">
+                  Suggested interventions & action tracker
+                </h2>
+                <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                  Targeted organizational initiatives, real-time status tracker, and before/after status mix evaluation.
+                </p>
+              </div>
+              <PersistentPrivacyBanner />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 pt-2 text-xs border-t border-[var(--border-subtle)]">
+              <span className="px-3 py-1 rounded-full bg-[var(--status-stretched-bg)] text-[var(--status-stretched)] border border-[var(--status-stretched)]/20 font-bold">
+                Planned: {status_summary?.planned_count}
+              </span>
+              <span className="px-3 py-1 rounded-full bg-[var(--primary-subtle)] text-[var(--primary)] border border-[var(--primary)]/20 font-bold">
+                In progress: {status_summary?.in_progress_count}
+              </span>
+              <span className="px-3 py-1 rounded-full bg-[var(--status-steady-bg)] text-[var(--status-steady)] border border-[var(--status-steady)]/20 font-bold">
+                Done: {status_summary?.done_count}
+              </span>
+              <span className="text-[var(--text-muted)] text-[11px] ml-auto">
+                Shift summary: <strong className="text-[var(--text-primary)]">{before_after_status_mix?.shift_summary}</strong>
+              </span>
+            </div>
+          </div>
+
+          <div className="ws-card p-6 space-y-5">
+            <div>
+              <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
+                Organizational Health Shift
+              </span>
+              <h3 className="text-base font-bold text-[var(--text-primary)] mt-0.5">
+                Before / after intervention status mix
+              </h3>
+              <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                Measured shift in team distribution comparing baseline status before policy intervention vs current observed recovery.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+              <div className="p-4 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)] space-y-3">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-bold text-[var(--text-primary)]">{before?.label}</span>
+                  <span className="text-[var(--text-muted)]">38 members</span>
+                </div>
+                <div className="w-full h-3 rounded-full overflow-hidden flex shadow-inner border border-[var(--border-subtle)]">
+                  <div style={{ width: `${before?.pct?.Steady}%`, backgroundColor: "var(--status-steady)" }} title={`Steady: ${before?.pct?.Steady}%`} />
+                  <div style={{ width: `${before?.pct?.Stretched}%`, backgroundColor: "var(--status-stretched)" }} title={`Stretched: ${before?.pct?.Stretched}%`} />
+                  <div style={{ width: `${before?.pct?.Strained}%`, backgroundColor: "var(--status-strained)" }} title={`Strained: ${before?.pct?.Strained}%`} />
+                  <div style={{ width: `${before?.pct?.Overloaded}%`, backgroundColor: "var(--status-overloaded)" }} title={`Overloaded: ${before?.pct?.Overloaded}%`} />
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px]">
+                  <div>Steady: <strong className="text-[var(--status-steady)]">{before?.counts?.Steady}</strong> ({before?.pct?.Steady}%)</div>
+                  <div>Stretched: <strong className="text-[var(--status-stretched)]">{before?.counts?.Stretched}</strong> ({before?.pct?.Stretched}%)</div>
+                  <div>Strained: <strong className="text-[var(--status-strained)]">{before?.counts?.Strained}</strong> ({before?.pct?.Strained}%)</div>
+                  <div>Overloaded: <strong className="text-[var(--status-overloaded)]">{before?.counts?.Overloaded}</strong> ({before?.pct?.Overloaded}%)</div>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)] space-y-3">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-bold text-[var(--text-primary)]">{after?.label}</span>
+                  <span className="px-2 py-0.5 rounded-full bg-[var(--status-steady-bg)] text-[var(--status-steady)] font-bold text-[10px]">
+                    +15.8% Steady
+                  </span>
+                </div>
+                <div className="w-full h-3 rounded-full overflow-hidden flex shadow-inner border border-[var(--border-subtle)]">
+                  <div style={{ width: `${after?.pct?.Steady}%`, backgroundColor: "var(--status-steady)" }} title={`Steady: ${after?.pct?.Steady}%`} />
+                  <div style={{ width: `${after?.pct?.Stretched}%`, backgroundColor: "var(--status-stretched)" }} title={`Stretched: ${after?.pct?.Stretched}%`} />
+                  <div style={{ width: `${after?.pct?.Strained}%`, backgroundColor: "var(--status-strained)" }} title={`Strained: ${after?.pct?.Strained}%`} />
+                  <div style={{ width: `${after?.pct?.Overloaded}%`, backgroundColor: "var(--status-overloaded)" }} title={`Overloaded: ${after?.pct?.Overloaded}%`} />
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px]">
+                  <div>Steady: <strong className="text-[var(--status-steady)]">{after?.counts?.Steady}</strong> ({after?.pct?.Steady}%)</div>
+                  <div>Stretched: <strong className="text-[var(--status-stretched)]">{after?.counts?.Stretched}</strong> ({after?.pct?.Stretched}%)</div>
+                  <div>Strained: <strong className="text-[var(--status-strained)]">{after?.counts?.Strained}</strong> ({after?.pct?.Strained}%)</div>
+                  <div>Overloaded: <strong className="text-[var(--status-overloaded)]">{after?.counts?.Overloaded}</strong> ({after?.pct?.Overloaded}%)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-[var(--text-primary)]">
+                Suggested organizational interventions
+              </h3>
+              <span className="text-xs text-[var(--text-muted)]">
+                Tap a status pill to update tracker
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {(interventions || []).map((action) => (
+                <div key={action.id} className="ws-card p-6 flex flex-col justify-between space-y-4">
+                  <div>
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <div>
+                        <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
+                          {action.category}
+                        </span>
+                        <h4 className="text-base font-bold text-[var(--text-primary)] mt-0.5">
+                          {action.title}
+                        </h4>
+                      </div>
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-bold border ${
+                        action.status === "Done"
+                          ? "bg-[var(--status-steady-bg)] text-[var(--status-steady)] border-[var(--status-steady)]/30"
+                          : action.status === "In progress"
+                          ? "bg-[var(--primary-subtle)] text-[var(--primary)] border-[var(--primary)]/30"
+                          : "bg-[var(--status-stretched-bg)] text-[var(--status-stretched)] border-[var(--status-stretched)]/30"
+                      }`}>
+                        {action.status}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                      {action.description}
+                    </p>
+
+                    <div className="mt-3 p-3 rounded-lg bg-[var(--bg-card-subtle)] text-[11px] text-[var(--text-muted)] space-y-1">
+                      <div>Owner: <strong className="text-[var(--text-primary)]">{action.owner}</strong> &bull; Target: <strong className="text-[var(--text-primary)]">{action.target_date}</strong></div>
+                      <div>Notes: <em>{action.notes}</em></div>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-semibold text-[var(--text-muted)]">Update tracker:</span>
+                    <div className="flex items-center bg-[var(--bg-card-subtle)] p-0.5 rounded-xl border border-[var(--border-subtle)] text-xs">
+                      {["Planned", "In progress", "Done"].map((st) => (
+                        <button
+                          key={st}
+                          onClick={() => handleStatusChange(action.id, st)}
+                          disabled={updatingId === action.id}
+                          className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
+                            action.status === st
+                              ? "bg-[var(--bg-card)] text-[var(--primary)] font-bold shadow-xs border border-[var(--border-subtle)]"
+                              : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                          }`}
+                        >
+                          {st}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // -------------------------------------------------------------------------
+    // PAGE 5: REPORTS (/reports)
+    // -------------------------------------------------------------------------
+    function ManagerReportsPageView() {
+      const [reportsData, setReportsData] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const [generating, setGenerating] = useState(false);
+      const [selectedScope, setSelectedScope] = useState("all");
+      const [selectedRange, setSelectedRange] = useState("4w");
+      const [dispatchChannel, setDispatchChannel] = useState("download");
+      const [toastMsg, setToastMsg] = useState("");
+
+      const loadReports = () => {
+        fetch("/api/manager/reports")
+          .then(res => res.json())
+          .then(data => {
+            setReportsData(data);
+            setLoading(false);
+          })
+          .catch(err => {
+            console.error("Error loading reports:", err);
+            setLoading(false);
+          });
+      };
+
+      useEffect(() => {
+        loadReports();
+      }, []);
+
+      const handleGenerateReport = () => {
+        setGenerating(true);
+        fetch("/api/manager/reports/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            team_id: selectedScope,
+            date_range: selectedRange,
+            dispatch_channel: dispatchChannel
+          })
+        })
+          .then(res => res.json())
+          .then(resData => {
+            setGenerating(false);
+            setToastMsg(`Generated on-demand report: "${resData.report.title}"`);
+            loadReports();
+            setTimeout(() => setToastMsg(""), 3500);
+          })
+          .catch(err => {
+            console.error("Error generating report:", err);
+            setGenerating(false);
+          });
+      };
+
+      const handleDownloadPdf = (report) => {
+        window.print();
+      };
+
+      if (loading) {
+        return (
+          <div className="space-y-6">
+            <div className="h-24 ws-skeleton rounded-2xl" />
+            <div className="h-48 ws-skeleton rounded-2xl" />
+            <div className="h-64 ws-skeleton rounded-2xl" />
+          </div>
+        );
+      }
+
+      const { scheduled_reports = [], past_reports = [], available_scopes = [] } = reportsData || {};
+
+      return (
+        <div className="space-y-6">
+          {toastMsg && (
+            <div className="fixed top-16 right-6 z-50 p-3 rounded-xl bg-[var(--primary)] text-white text-xs font-semibold shadow-lg flex items-center gap-2 animate-bounce">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+              </svg>
+              {toastMsg}
+            </div>
+          )}
+
+          <div className="ws-card p-6 space-y-3">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
+                  Manager portal &bull; Reports
+                </span>
+                <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] mt-0.5">
+                  Stress level reports & summaries
+                </h2>
+                <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                  Scheduled dispatches and on-demand PDF/email summaries of team stress levels.
+                </p>
+              </div>
+              <PersistentPrivacyBanner />
+            </div>
+          </div>
+
+          <div className="ws-card p-6 space-y-4">
+            <div>
+              <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
+                On-Demand Export
+              </span>
+              <h3 className="text-base font-bold text-[var(--text-primary)] mt-0.5">
+                Generate team stress summary
+              </h3>
+              <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                Export a zero-identification wellness digest for organizational review.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Scope / Team</label>
+                <select
+                  value={selectedScope}
+                  onChange={(e) => setSelectedScope(e.target.value)}
+                  className="w-full bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-primary)] focus:outline-none"
+                >
+                  {available_scopes.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.workforce} members)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Reporting timeframe</label>
+                <select
+                  value={selectedRange}
+                  onChange={(e) => setSelectedRange(e.target.value)}
+                  className="w-full bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-primary)] focus:outline-none"
+                >
+                  <option value="4w">Past 4 weeks (rolling)</option>
+                  <option value="30d">Past 30 days (rolling)</option>
+                  <option value="qtd">Quarter to date</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Format / Delivery</label>
+                <select
+                  value={dispatchChannel}
+                  onChange={(e) => setDispatchChannel(e.target.value)}
+                  className="w-full bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-primary)] focus:outline-none"
+                >
+                  <option value="download">Download PDF Summary</option>
+                  <option value="email">Email Executive Digest</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={handleGenerateReport}
+                disabled={generating}
+                className="px-4 py-2 rounded-xl bg-[var(--primary)] text-white text-xs font-semibold hover:bg-[var(--primary-hover)] transition-all shadow-sm flex items-center gap-2"
+              >
+                {generating ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                    Generating report...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Generate report
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="ws-card p-6 space-y-4">
+            <div>
+              <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
+                Automated Schedules
+              </span>
+              <h3 className="text-base font-bold text-[var(--text-primary)] mt-0.5">
+                Scheduled email and PDF dispatches
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {scheduled_reports.map((sch) => (
+                <div key={sch.id} className="p-4 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)] space-y-2">
+                  <div className="flex justify-between items-start">
+                    <h4 className="text-sm font-bold text-[var(--text-primary)]">{sch.name}</h4>
+                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-[var(--status-steady-bg)] text-[var(--status-steady)] font-bold">
+                      {sch.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[var(--text-secondary)] font-medium">Cadence: {sch.cadence}</p>
+                  <div className="text-[11px] text-[var(--text-muted)] truncate">
+                    Recipients: {sch.recipients}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="ws-card p-6 space-y-4">
+            <div>
+              <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
+                Report Archive
+              </span>
+              <h3 className="text-base font-bold text-[var(--text-primary)] mt-0.5">
+                Past generated stress summaries
+              </h3>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead>
+                  <tr className="border-b border-[var(--border-subtle)] text-[var(--text-muted)] font-semibold">
+                    <th className="pb-3 pr-4">Report title</th>
+                    <th className="pb-3 pr-4">Scope</th>
+                    <th className="pb-3 pr-4">Generated at</th>
+                    <th className="pb-3 pr-4">Status</th>
+                    <th className="pb-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border-subtle)]">
+                  {past_reports.map((rep) => (
+                    <tr key={rep.id} className="hover:bg-[var(--bg-card-subtle)] transition-colors">
+                      <td className="py-3 pr-4 font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                        <svg className="w-4 h-4 text-[var(--primary)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        {rep.title}
+                      </td>
+                      <td className="py-3 pr-4 text-[var(--text-secondary)]">{rep.scope}</td>
+                      <td className="py-3 pr-4 text-[var(--text-muted)]">{rep.generated_at}</td>
+                      <td className="py-3 pr-4">
+                        {getManagerStatusBadge(rep.overall_status)}
+                      </td>
+                      <td className="py-3 text-right">
+                        <button
+                          onClick={() => handleDownloadPdf(rep)}
+                          className="px-2.5 py-1 rounded-lg bg-[var(--bg-card-subtle)] hover:bg-[var(--primary-subtle)] text-[var(--primary)] font-semibold border border-[var(--border-subtle)] transition-colors"
+                        >
+                          Download {rep.format}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // -------------------------------------------------------------------------
+    // PAGE 6: ADMIN (/admin)
+    // -------------------------------------------------------------------------
+    function ManagerAdminPageView() {
+      const [adminData, setAdminData] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const [searchLog, setSearchLog] = useState("");
+
+      useEffect(() => {
+        fetch("/api/manager/admin")
+          .then(res => res.json())
+          .then(data => {
+            setAdminData(data);
+            setLoading(false);
+          })
+          .catch(err => {
+            console.error("Error loading admin data:", err);
+            setLoading(false);
+          });
+      }, []);
+
+      if (loading) {
+        return (
+          <div className="space-y-6">
+            <div className="h-24 ws-skeleton rounded-2xl" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="h-48 ws-skeleton rounded-2xl" />
+              <div className="h-48 ws-skeleton rounded-2xl" />
+            </div>
+          </div>
+        );
+      }
+
+      const { working_hours, holidays = [], teams_setup = [], audit_logs = [] } = adminData || {};
+
+      const filteredLogs = audit_logs.filter(l =>
+        l.actor.toLowerCase().includes(searchLog.toLowerCase()) ||
+        l.action.toLowerCase().includes(searchLog.toLowerCase()) ||
+        l.scope.toLowerCase().includes(searchLog.toLowerCase())
+      );
+
+      return (
+        <div className="space-y-6">
+          <div className="ws-card p-6 space-y-3">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
+                  Manager portal &bull; Admin
+                </span>
+                <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] mt-0.5">
+                  Admin & organizational settings
+                </h2>
+                <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                  Working hours and holidays, team setup, and an audit log of who viewed what and when.
+                </p>
+              </div>
+              <PersistentPrivacyBanner />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="ws-card p-6 space-y-4">
+              <div>
+                <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
+                  Schedule Parameters
+                </span>
+                <h3 className="text-base font-bold text-[var(--text-primary)] mt-0.5">
+                  Working hours & rhythm thresholds
+                </h3>
+              </div>
+
+              <div className="space-y-2.5 text-xs">
+                <div className="flex justify-between items-center p-2.5 rounded-lg bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)]">
+                  <span className="text-[var(--text-secondary)]">Core working hours:</span>
+                  <span className="font-bold text-[var(--text-primary)]">{working_hours?.core_hours_start} &ndash; {working_hours?.core_hours_end} (45h weekly standard)</span>
+                </div>
+                <div className="flex justify-between items-center p-2.5 rounded-lg bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)]">
+                  <span className="text-[var(--text-secondary)]">Midday recovery / lunch:</span>
+                  <span className="font-bold text-[var(--text-primary)]">{working_hours?.lunch_start} &ndash; {working_hours?.lunch_end} (protected window)</span>
+                </div>
+                <div className="flex justify-between items-center p-2.5 rounded-lg bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)]">
+                  <span className="text-[var(--text-secondary)]">Shift midpoint (check-in unlock):</span>
+                  <span className="font-bold text-[var(--text-primary)]">{working_hours?.shift_midpoint} local time</span>
+                </div>
+                <div className="flex justify-between items-center p-2.5 rounded-lg bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)]">
+                  <span className="text-[var(--text-secondary)]">After-hours threshold:</span>
+                  <span className="font-bold text-[var(--text-primary)]">After {working_hours?.after_hours_cutoff} (evaluated for recovery fatigue)</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="ws-card p-6 space-y-4">
+              <div>
+                <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
+                  Calendar
+                </span>
+                <h3 className="text-base font-bold text-[var(--text-primary)] mt-0.5">
+                  Observed holidays 2026
+                </h3>
+              </div>
+
+              <div className="space-y-2 text-xs max-h-56 overflow-y-auto pr-1">
+                {holidays.map((h, i) => (
+                  <div key={i} className="flex justify-between items-center p-2.5 rounded-lg bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)]">
+                    <div>
+                      <div className="font-bold text-[var(--text-primary)]">{h.name}</div>
+                      <div className="text-[11px] text-[var(--text-muted)]">{h.type}</div>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full bg-[var(--bg-card)] border border-[var(--border-subtle)] font-semibold text-[var(--text-primary)]">
+                      {h.date}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="ws-card p-6 space-y-4">
+            <div>
+              <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
+                Structure & Privacy
+              </span>
+              <h3 className="text-base font-bold text-[var(--text-primary)] mt-0.5">
+                Team setup & privacy threshold status
+              </h3>
+              <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                Active team configurations and k-anonymity compliance verification (minimum group size = 5).
+              </p>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead>
+                  <tr className="border-b border-[var(--border-subtle)] text-[var(--text-muted)] font-semibold">
+                    <th className="pb-3 pr-4">Team name</th>
+                    <th className="pb-3 pr-4">Department</th>
+                    <th className="pb-3 pr-4">Headcount</th>
+                    <th className="pb-3 pr-4">Privacy compliance</th>
+                    <th className="pb-3 text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border-subtle)]">
+                  {teams_setup.map((t) => (
+                    <tr key={t.id} className="hover:bg-[var(--bg-card-subtle)] transition-colors">
+                      <td className="py-3 pr-4 font-bold text-[var(--text-primary)]">{t.name}</td>
+                      <td className="py-3 pr-4 text-[var(--text-secondary)]">{t.department}</td>
+                      <td className="py-3 pr-4 font-semibold text-[var(--text-primary)]">{t.workforce} members</td>
+                      <td className="py-3 pr-4">
+                        {t.meets_privacy_threshold ? (
+                          <span className="text-[var(--status-steady)] flex items-center gap-1 font-semibold">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                            Pass (k &ge; 5)
+                          </span>
+                        ) : (
+                          <span className="text-[var(--status-strained)] flex items-center gap-1 font-semibold">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            Suppressed (fewer than 5 people)
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 text-right">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                          t.meets_privacy_threshold ? "bg-[var(--status-steady-bg)] text-[var(--status-steady)]" : "bg-[var(--status-strained-bg)] text-[var(--status-strained)]"
+                        }`}>
+                          {t.status_label}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="ws-card p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
+                  Security & Compliance
+                </span>
+                <h3 className="text-base font-bold text-[var(--text-primary)] mt-0.5">
+                  Access audit log
+                </h3>
+                <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                  Immutable record of who viewed what, when, and privacy enforcement checkpoints.
+                </p>
+              </div>
+
+              <div className="w-full sm:w-64">
+                <input
+                  type="text"
+                  placeholder="Search audit events..."
+                  value={searchLog}
+                  onChange={(e) => setSearchLog(e.target.value)}
+                  className="w-full bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)] rounded-xl px-3 py-1.5 text-xs text-[var(--text-primary)] focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead>
+                  <tr className="border-b border-[var(--border-subtle)] text-[var(--text-muted)] font-semibold">
+                    <th className="pb-3 pr-4">Timestamp</th>
+                    <th className="pb-3 pr-4">Actor (Role)</th>
+                    <th className="pb-3 pr-4">Action</th>
+                    <th className="pb-3 pr-4">Target scope</th>
+                    <th className="pb-3 text-right">Privacy check</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border-subtle)]">
+                  {filteredLogs.map((log) => (
+                    <tr key={log.id} className="hover:bg-[var(--bg-card-subtle)] transition-colors">
+                      <td className="py-3 pr-4 text-[var(--text-muted)] font-mono text-[11px]">{log.timestamp}</td>
+                      <td className="py-3 pr-4 font-bold text-[var(--text-primary)]">{log.actor}</td>
+                      <td className="py-3 pr-4 text-[var(--text-secondary)]">{log.action}</td>
+                      <td className="py-3 pr-4 font-semibold text-[var(--primary)]">{log.scope}</td>
+                      <td className="py-3 text-right">
+                        <span className="px-2.5 py-0.5 rounded-full bg-[var(--bg-card-subtle)] text-[var(--text-secondary)] border border-[var(--border-subtle)] font-medium text-[11px]">
+                          {log.privacy_verification}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     // =========================================================================
     // MANAGER PORTAL CONTENT (PRIVACY-PRESERVED & k-ANONYMITY GATED)
     // =========================================================================
@@ -3348,6 +4801,39 @@
             </div>
           </div>
         );
+      }
+
+      if (currentRoute === "teams" || currentRoute === "/teams") {
+        return (
+          <ManagerTeamsPageView
+            setCurrentRoute={setCurrentRoute}
+            onSelectTeam={(teamId) => {
+              setSelectedTeam(teamId);
+              setCurrentRoute("overview");
+              handleTeamChange(teamId);
+            }}
+          />
+        );
+      }
+
+      if (currentRoute === "drivers" || currentRoute === "/drivers") {
+        return <ManagerDriversPageView />;
+      }
+
+      if (currentRoute === "checkins" || currentRoute === "/checkins") {
+        return <ManagerCheckinsPageView />;
+      }
+
+      if (currentRoute === "actions" || currentRoute === "/actions") {
+        return <ManagerActionsPageView />;
+      }
+
+      if (currentRoute === "reports" || currentRoute === "/reports") {
+        return <ManagerReportsPageView />;
+      }
+
+      if (currentRoute === "admin" || currentRoute === "/admin") {
+        return <ManagerAdminPageView />;
       }
 
       if (currentRoute === "trends") {
