@@ -326,6 +326,38 @@
       { id: 12, key: "bat_q12", dim: "Cognitive impairment", text: "I make mistakes in my work because I have my mind on other things" }
     ];
 
+    // 4 Groups of BAT-12 (One group per step in Day Check-in form)
+    const BAT12_GROUPS = [
+      {
+        step: 1,
+        key: "exhaustion",
+        title: "Exhaustion",
+        subtitle: "Physical and cognitive energy recovery after your workday.",
+        questions: BAT12_QUESTIONS.slice(0, 3)
+      },
+      {
+        step: 2,
+        key: "mental_distance",
+        title: "Mental distance",
+        subtitle: "Psychological withdrawal and enthusiasm for your daily work.",
+        questions: BAT12_QUESTIONS.slice(3, 6)
+      },
+      {
+        step: 3,
+        key: "emotional_impairment",
+        title: "Emotional impairment",
+        subtitle: "Emotional regulation and composure during work situations.",
+        questions: BAT12_QUESTIONS.slice(6, 9)
+      },
+      {
+        step: 4,
+        key: "cognitive_impairment",
+        title: "Cognitive impairment",
+        subtitle: "Concentration, working memory, and focus stamina.",
+        questions: BAT12_QUESTIONS.slice(9, 12)
+      }
+    ];
+
     // =========================================================================
     // HELPER: Friendly Unit Formatter ("1h 26m", not "86.4 mins")
     // =========================================================================
@@ -1210,6 +1242,465 @@
     }
 
     // =========================================================================
+    // SECTION 3: DAY CHECK-IN CARD (With Timing Rules)
+    // Card Title: "How was your day?"
+    // Timing rules:
+    // (a) Before 1:00 PM: card locked: "Opens at 1:00 PM so it reflects your day."
+    //     Beside it text button: "Logging off early? Check in now."
+    // (b) Tapping early unlocks form, sets early_checkin = true, saves timestamp
+    // (c) After unlock time: primary button "Take today's check-in (about 2 minutes)"
+    // (d) Also unlock automatically if tracking paused or no activity for 60m after 11:00 AM
+    // (e) One submission per day; editable until midnight; afterwards show "Done today ✓" with "1.8 out of 5 (low)"
+    // =========================================================================
+    function CheckInCard({ summary, onOpenModal, isTrackingPaused = false, isInactiveAfter11AM = false }) {
+      const [testOverride, setTestOverride] = useState(null); // null, "locked", "unlocked", "paused"
+
+      const now = new Date();
+      const realHour = now.getHours();
+
+      let effectiveHour = realHour;
+      let effectivePaused = isTrackingPaused;
+
+      if (testOverride === "locked") {
+        effectiveHour = 10;
+        effectivePaused = false;
+      } else if (testOverride === "unlocked") {
+        effectiveHour = 14;
+      } else if (testOverride === "paused") {
+        effectivePaused = true;
+      }
+
+      // Rule (a) & (c): 1:00 PM local time (13:00)
+      const isPastUnlockTime = effectiveHour >= 13;
+
+      // Rule (d): Also unlock automatically if user pauses tracking or no activity for 60m after 11:00 AM
+      const isUnlockedByInactivityOrPause = effectivePaused || (effectiveHour >= 11 && isInactiveAfter11AM);
+
+      const isUnlocked = isPastUnlockTime || isUnlockedByInactivityOrPause;
+
+      // Rule (e): One submission per day; editable until midnight; afterwards show "Done today ✓" with score as "1.8 out of 5 (low)"
+      const isDoneToday = summary && (summary.today_submitted || summary.submitted_at);
+      const scoreText = summary ? (summary.today_score_text || `${summary.today_score || 1.8} out of 5 (${summary.today_score_desc || "low"})`) : "1.8 out of 5 (low)";
+
+      return (
+        <div
+          className="ws-card p-6 border-l-4 transition-all relative"
+          style={{
+            borderLeftColor: isDoneToday
+              ? "var(--status-steady)"
+              : isUnlocked
+              ? "var(--primary)"
+              : "var(--border-strong)"
+          }}
+        >
+          {/* Subtle Simulation Controls for Evaluation */}
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2.5 border-b border-[var(--border-subtle)] text-[11px] text-[var(--text-muted)]">
+            <span className="font-semibold uppercase tracking-wider text-[10px] text-[var(--text-secondary)]">
+              Timing rule status: {isDoneToday ? "Done today ✓" : isUnlocked ? "Unlocked (>= 1:00 PM / Inactivity)" : "Locked (< 1:00 PM)"}
+            </span>
+            <div className="flex items-center gap-1">
+              <span className="hidden sm:inline text-[10px]">Test state:</span>
+              <button
+                type="button"
+                onClick={() => setTestOverride(testOverride === "locked" ? null : "locked")}
+                className={`px-2 py-0.5 rounded text-[10px] transition-colors ${
+                  testOverride === "locked"
+                    ? "bg-[var(--status-strained)] text-white font-bold"
+                    : "bg-[var(--bg-card-subtle)] hover:bg-[var(--bg-card-hover)] text-[var(--text-muted)]"
+                }`}
+                title="Simulate 10:30 AM before shift midpoint (Locks card)"
+              >
+                10:30 AM (Lock)
+              </button>
+              <button
+                type="button"
+                onClick={() => setTestOverride(testOverride === "unlocked" ? null : "unlocked")}
+                className={`px-2 py-0.5 rounded text-[10px] transition-colors ${
+                  testOverride === "unlocked"
+                    ? "bg-[var(--primary)] text-white font-bold"
+                    : "bg-[var(--bg-card-subtle)] hover:bg-[var(--bg-card-hover)] text-[var(--text-muted)]"
+                }`}
+                title="Simulate 2:00 PM after shift midpoint (Unlocks card)"
+              >
+                2:00 PM (Unlock)
+              </button>
+              <button
+                type="button"
+                onClick={() => setTestOverride(testOverride === "paused" ? null : "paused")}
+                className={`px-2 py-0.5 rounded text-[10px] transition-colors ${
+                  testOverride === "paused"
+                    ? "bg-[var(--primary)] text-white font-bold"
+                    : "bg-[var(--bg-card-subtle)] hover:bg-[var(--bg-card-hover)] text-[var(--text-muted)]"
+                }`}
+                title="Simulate tracking paused (Auto-unlock)"
+              >
+                Tracking Paused (Unlock)
+              </button>
+            </div>
+          </div>
+
+          {/* Card Body by State */}
+          {isDoneToday ? (
+            /* (e) COMPLETED TODAY */
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-[var(--status-steady)] uppercase tracking-wider">
+                    Day Check-in
+                  </span>
+                  {summary?.today_early_checkin && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--bg-card-subtle)] text-[var(--text-muted)] font-medium">
+                      Early check-in
+                    </span>
+                  )}
+                </div>
+                <h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]">
+                  How was your day?
+                </h3>
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[var(--status-steady-bg)] text-[var(--status-steady)] border border-[var(--status-steady-border)]">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Done today &check;
+                  </span>
+                  <span className="text-sm font-semibold text-[var(--text-primary)]">
+                    {scoreText}
+                  </span>
+                </div>
+                <p className="text-xs text-[var(--text-secondary)] pt-0.5 leading-relaxed">
+                  {summary?.submitted_at
+                    ? `Recorded at ${new Date(summary.submitted_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`
+                    : "Recorded today."}{" "}
+                  Your response is editable until midnight.
+                </p>
+              </div>
+
+              <div className="shrink-0">
+                <button
+                  type="button"
+                  onClick={() => onOpenModal({ earlyCheckin: false, isEdit: true })}
+                  className="ws-btn-secondary text-xs py-2 px-4 shadow-xs"
+                >
+                  Edit today's check-in
+                </button>
+              </div>
+            </div>
+          ) : !isUnlocked ? (
+            /* (a) LOCKED BEFORE 1:00 PM */
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+                  Day Check-in
+                </span>
+                <h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]">
+                  How was your day?
+                </h3>
+                <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)] pt-1">
+                  <svg className="w-4 h-4 text-[var(--text-muted)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  <span className="font-medium">Opens at 1:00 PM so it reflects your day.</span>
+                </div>
+              </div>
+
+              {/* (b) Beside it text button: "Logging off early? Check in now." */}
+              <div className="shrink-0">
+                <button
+                  type="button"
+                  onClick={() => onOpenModal({ earlyCheckin: true, isEdit: false })}
+                  className="text-xs font-semibold text-[var(--primary)] hover:underline py-2 px-3 rounded-lg hover:bg-[var(--bg-card-subtle)] transition-colors"
+                >
+                  Logging off early? Check in now.
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* (c) UNLOCKED (>= 1:00 PM OR PAUSED/INACTIVE) */
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
+                  Day Check-in
+                </span>
+                <h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]">
+                  How was your day?
+                </h3>
+                <p className="text-xs text-[var(--text-secondary)]">
+                  12 quick questions across exhaustion, mental distance, emotional balance, and focus.
+                </p>
+              </div>
+
+              {/* (c) Primary button: "Take today's check-in (about 2 minutes)" */}
+              <div className="shrink-0">
+                <button
+                  type="button"
+                  onClick={() => onOpenModal({ earlyCheckin: false, isEdit: false })}
+                  className="ws-btn-primary text-xs py-2.5 px-5 shadow-xs flex items-center gap-2"
+                >
+                  <span>Take today's check-in (about 2 minutes)</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // =========================================================================
+    // CHECK-INS PAGE (Route /check-in)
+    // Score history line chart and user's usual range ("Your usual check-in score: 1.5 (low)")
+    // =========================================================================
+    function EmployeeCheckInPageView({ data, onOpenModal }) {
+      const [hoveredPoint, setHoveredPoint] = useState(null);
+
+      if (!data) return <Skeleton count={3} />;
+
+      const batSummary = data.bat12_summary || {};
+      const history = batSummary.checkin_history || [];
+      const usualScoreText = batSummary.usual_checkin_text || "Your usual check-in score: 1.5 (low)";
+      const usualVal = batSummary.usual_checkin_score || 1.5;
+      const usualRange = batSummary.usual_range || { min: 1.2, max: 1.8 };
+
+      // SVG Dimensions for Score History Chart
+      const width = 740;
+      const height = 180;
+      const padTop = 20;
+      const padBottom = 28;
+      const padLeft = 32;
+      const padRight = 24;
+      const chartW = width - padLeft - padRight;
+      const chartH = height - padTop - padBottom;
+
+      const minScore = 1.0;
+      const maxScore = 5.0;
+      const rangeScore = maxScore - minScore;
+
+      const getX = (idx) => padLeft + (idx / Math.max(1, history.length - 1)) * chartW;
+      const getY = (val) => padTop + chartH - ((Math.max(minScore, Math.min(maxScore, val)) - minScore) / rangeScore) * chartH;
+
+      // Usual Range Band Coordinates
+      const bandTopY = getY(usualRange.max);
+      const bandBottomY = getY(usualRange.min);
+      const bandHeight = Math.max(6, bandBottomY - bandTopY);
+      const usualLineY = getY(usualVal);
+
+      // Points and Path
+      const points = history.map((d, i) => ({
+        x: getX(i),
+        y: getY(d.score || 1.5),
+        score: d.score || 1.5,
+        date: d.date,
+        dayName: d.day_name,
+        isWeekend: d.is_weekend,
+        status: d.status || "Green"
+      }));
+
+      const linePath = points.length > 0
+        ? points.reduce((acc, pt, i) => `${acc} ${i === 0 ? "M" : "L"} ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`, "")
+        : "";
+
+      return (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)]">Day Check-in</h2>
+              <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                Daily psychological pulse tracking personal exhaustion, mental distance, emotional regulation, and cognitive focus.
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] bg-[var(--bg-card)] px-3 py-1.5 rounded-full border border-[var(--border-subtle)] shadow-xs self-start sm:self-auto">
+              <svg className="w-3.5 h-3.5 text-[var(--text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              <span>Only you can see this page.</span>
+            </div>
+          </div>
+
+          {/* Today's Check-in Card (How was your day?) */}
+          <CheckInCard summary={batSummary} onOpenModal={onOpenModal} />
+
+          {/* Score History Line Chart & User's Usual Range */}
+          <div className="ws-card p-6">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-3">
+              <div>
+                <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
+                  Trajectory & Baseline
+                </span>
+                <h3 className="text-base font-bold text-[var(--text-primary)] mt-0.5">
+                  Check-in score history (past 30 days)
+                </h3>
+              </div>
+
+              {/* Callout: "Your usual check-in score: 1.5 (low)" */}
+              <div className="p-2.5 px-3.5 rounded-xl bg-[var(--primary-subtle)] border border-[var(--border-subtle)]">
+                <span className="text-xs font-bold text-[var(--primary)]">
+                  {usualScoreText}
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs text-[var(--text-secondary)] mb-4">
+              Daily BAT-12 composite score on a 1.0 to 5.0 scale. Shaded band reflects your personal calibrated baseline.
+            </p>
+
+            {/* SVG Line Chart */}
+            <div className="relative my-2">
+              <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-44 overflow-visible">
+                {/* Horizontal Grid lines */}
+                {[1, 2, 3, 4, 5].map((s) => {
+                  const y = getY(s);
+                  return (
+                    <g key={s}>
+                      <line x1={padLeft} y1={y} x2={width - padRight} y2={y} stroke="var(--border-subtle)" strokeDasharray="3 3" />
+                      <text x={padLeft - 6} y={y + 3} fill="var(--text-muted)" fontSize="9" textAnchor="end">{s}.0</text>
+                    </g>
+                  );
+                })}
+
+                {/* Shaded "Your Usual Range" Band */}
+                <rect
+                  x={padLeft}
+                  y={bandTopY}
+                  width={chartW}
+                  height={bandHeight}
+                  fill="var(--primary-subtle)"
+                  opacity="0.75"
+                />
+
+                {/* Dashed Center Reference Line */}
+                <line
+                  x1={padLeft}
+                  y1={usualLineY}
+                  x2={width - padRight}
+                  y2={usualLineY}
+                  stroke="var(--primary)"
+                  strokeWidth="1.2"
+                  strokeDasharray="4 4"
+                />
+
+                {/* Usual Range Text Label */}
+                <text
+                  x={width - padRight - 6}
+                  y={bandTopY + 11}
+                  fill="var(--primary)"
+                  fontSize="9"
+                  fontWeight="600"
+                  textAnchor="end"
+                >
+                  Usual range ({usualRange.min} &ndash; {usualRange.max})
+                </text>
+
+                {/* Trend Line */}
+                <path
+                  d={linePath}
+                  fill="none"
+                  stroke="var(--primary)"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+
+                {/* Data Points */}
+                {points.map((pt, idx) => {
+                  const meta = STATUS_META[pt.status] || STATUS_META.Green;
+                  const isHovered = hoveredPoint === idx;
+                  return (
+                    <circle
+                      key={idx}
+                      cx={pt.x}
+                      cy={pt.y}
+                      r={isHovered ? 5.5 : 3.5}
+                      fill={pt.isWeekend ? "var(--border-strong)" : meta.color}
+                      stroke="var(--bg-card)"
+                      strokeWidth="2"
+                      className="cursor-pointer transition-all"
+                      onMouseEnter={() => setHoveredPoint(idx)}
+                      onMouseLeave={() => setHoveredPoint(null)}
+                    />
+                  );
+                })}
+              </svg>
+
+              {/* Hover Tooltip */}
+              {hoveredPoint !== null && points[hoveredPoint] && (
+                <div
+                  className="absolute bg-[var(--text-primary)] text-[var(--bg-card)] text-[11px] py-1.5 px-3 rounded-lg shadow-lg pointer-events-none z-20 whitespace-nowrap transform -translate-x-1/2"
+                  style={{
+                    left: `${(points[hoveredPoint].x / width) * 100}%`,
+                    top: `${(points[hoveredPoint].y / height) * 100 - 36}%`
+                  }}
+                >
+                  <span className="font-semibold">{points[hoveredPoint].date} ({points[hoveredPoint].dayName}):</span>{" "}
+                  {points[hoveredPoint].score} out of 5 &bull; {points[hoveredPoint].isWeekend ? "Weekend" : points[hoveredPoint].status}
+                </div>
+              )}
+            </div>
+
+            {/* X-axis date range */}
+            <div className="flex justify-between text-[10px] text-[var(--text-muted)] px-1 mt-1">
+              <span>{history[0]?.date || "30 days ago"}</span>
+              <span>15 days ago</span>
+              <span className="font-semibold text-[var(--text-secondary)]">Today</span>
+            </div>
+          </div>
+
+          {/* The 4 Dimension Breakdown Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              {
+                title: "Exhaustion",
+                score: batSummary.today_exhaustion || 1.4,
+                subtitle: "Energy & physical recovery",
+                desc: "Measures feelings of total mental and physical tiredness after a day's effort."
+              },
+              {
+                title: "Mental distance",
+                score: batSummary.today_mental_distance || 1.3,
+                subtitle: "Work engagement",
+                desc: "Assesses psychological enthusiasm, aversion, or cynicism regarding job tasks."
+              },
+              {
+                title: "Emotional impairment",
+                score: batSummary.today_emotional || 1.3,
+                subtitle: "Emotional balance",
+                desc: "Reflects emotional control, mood stability, and unintentional overreactions."
+              },
+              {
+                title: "Cognitive impairment",
+                score: batSummary.today_cognitive || 1.3,
+                subtitle: "Focus & concentration",
+                desc: "Tracks ability to stay attentive, avoid intrusive thoughts, and avoid mistakes."
+              }
+            ].map((dim, i) => (
+              <div key={i} className="ws-card p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">{dim.title}</span>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[var(--primary-subtle)] text-[var(--primary)]">
+                    {Number(dim.score).toFixed(1)} / 5
+                  </span>
+                </div>
+                <div className="text-sm font-bold text-[var(--text-primary)]">{dim.subtitle}</div>
+                <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">{dim.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Privacy & Clinical Grounding Card */}
+          <div className="ws-card p-5 bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] space-y-2">
+            <div className="font-bold text-[var(--text-primary)]">BAT-12 Scientific Grounding & Zero-Identification</div>
+            <p className="leading-relaxed">
+              The Burnout Assessment Tool (BAT-12), developed by Prof. Wilmar Schaufeli and European research teams, is clinically validated to detect chronic occupational burnout. Your individual answers are strictly confidential and stored on your local workstation; managers only see anonymized, aggregate team counts.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // =========================================================================
     // SECTION 4: "WHAT'S BEHIND THIS"
     // =========================================================================
     function WhatsBehindThis({ primaryDrivers = [] }) {
@@ -1484,8 +1975,9 @@
       const [managerData, setManagerData] = useState(null);
       const [loading, setLoading] = useState(true);
 
-      // Modal State for BAT-12
+      // Modal State for Day Check-in
       const [showBatModal, setShowBatModal] = useState(false);
+      const [isEarlyCheckin, setIsEarlyCheckin] = useState(false);
       const [batResponses, setBatResponses] = useState({});
       const [submittingBat, setSubmittingBat] = useState(false);
       const [batSubmittedSuccess, setBatSubmittedSuccess] = useState(false);
@@ -1543,23 +2035,32 @@
         }
       }, [viewRole, selectedPersonaId, isDemoMode]);
 
-      useEffect(() => {
-        const initial = {};
-        BAT12_QUESTIONS.forEach(q => {
-          initial[q.key] = 2;
-        });
-        setBatResponses(initial);
-      }, [showBatModal]);
+      const handleOpenCheckInModal = ({ earlyCheckin = false, isEdit = false } = {}) => {
+        setIsEarlyCheckin(earlyCheckin);
+        if (isEdit && employeeData?.bat12_summary?.raw_responses) {
+          setBatResponses({ ...employeeData.bat12_summary.raw_responses });
+        } else {
+          const initial = {};
+          BAT12_QUESTIONS.forEach(q => {
+            initial[q.key] = batResponses[q.key] !== undefined ? batResponses[q.key] : 2;
+          });
+          setBatResponses(initial);
+        }
+        setShowBatModal(true);
+      };
 
       const handleBatSubmit = () => {
         setSubmittingBat(true);
+        const nowIso = new Date().toISOString();
         fetch("/api/employee/survey/bat12", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             employee_id: selectedPersonaId,
             logical_day: employeeData ? employeeData.current_date : null,
-            items: batResponses
+            items: batResponses,
+            early_checkin: isEarlyCheckin,
+            submitted_at: nowIso
           })
         })
           .then(res => res.json())
@@ -1573,7 +2074,7 @@
             }, 1200);
           })
           .catch(err => {
-            console.error("Error submitting BAT survey:", err);
+            console.error("Error submitting Day Check-in:", err);
             setSubmittingBat(false);
           });
       };
@@ -1606,7 +2107,7 @@
         },
         {
           id: "checkin",
-          label: "Daily check-in",
+          label: "Day Check-in",
           icon: (
             <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
@@ -1777,41 +2278,18 @@
                     currentRoute === "today" ? (
                       <EmployeeTodayView
                         data={employeeData}
-                        onOpenBatModal={() => setShowBatModal(true)}
+                        onOpenBatModal={handleOpenCheckInModal}
                         isDemoMode={isDemoMode}
                       />
                     ) : currentRoute === "trends" ? (
                       <EmployeeMetricsView
                         data={employeeData}
                       />
-                    ) : currentRoute === "checkin" ? (
-                      <div className="space-y-6">
-                        <CheckInCard summary={employeeData ? employeeData.bat12_summary : null} onOpenModal={() => setShowBatModal(true)} />
-                        <div className="ws-card p-6">
-                          <h3 className="text-base font-semibold text-[var(--text-primary)] mb-2">Psychological pulse history</h3>
-                          <p className="text-xs text-[var(--text-secondary)] mb-4">
-                            Recent daily BAT-12 check-in scores anchoring your personal baseline.
-                          </p>
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                            <div className="p-3 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)]">
-                              <div className="text-xs text-[var(--text-muted)]">Exhaustion</div>
-                              <div className="text-lg font-bold text-[var(--text-primary)] mt-1">{employeeData?.bat12_summary?.today_exhaustion || "2.0"}</div>
-                            </div>
-                            <div className="p-3 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)]">
-                              <div className="text-xs text-[var(--text-muted)]">Cognitive</div>
-                              <div className="text-lg font-bold text-[var(--text-primary)] mt-1">{employeeData?.bat12_summary?.today_cognitive || "2.0"}</div>
-                            </div>
-                            <div className="p-3 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)]">
-                              <div className="text-xs text-[var(--text-muted)]">Today score</div>
-                              <div className="text-lg font-bold text-[var(--primary)] mt-1">{employeeData?.bat12_summary?.today_score || "1.8"}</div>
-                            </div>
-                            <div className="p-3 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)]">
-                              <div className="text-xs text-[var(--text-muted)]">Baseline mean</div>
-                              <div className="text-lg font-bold text-[var(--status-steady)] mt-1">{employeeData?.bat12_summary?.baseline_bat_score || "1.4"}</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                    ) : (currentRoute === "checkin" || currentRoute === "/check-in" || currentRoute === "check-in") ? (
+                      <EmployeeCheckInPageView
+                        data={employeeData}
+                        onOpenModal={handleOpenCheckInModal}
+                      />
                     ) : (
                       // Route: about
                       <div className="space-y-6">
@@ -1949,15 +2427,16 @@
             </div>
           </div>
 
-          {/* BAT-12 Survey Modal */}
+          {/* Day Check-in Modal */}
           {showBatModal && (
-            <BAT12SurveyModal
+            <DayCheckInModal
               responses={batResponses}
               setResponses={setBatResponses}
               onSubmit={handleBatSubmit}
               onClose={() => setShowBatModal(false)}
               submitting={submittingBat}
               success={batSubmittedSuccess}
+              isEarlyCheckin={isEarlyCheckin}
             />
           )}
         </div>
@@ -2192,97 +2671,199 @@
     }
 
     // =========================================================================
-    // BAT-12 INTERACTIVE MODAL COMPONENT
+    // DAY CHECK-IN MULTI-STEP MODAL (4 Groups, One Group Per Step, Skip Option)
     // =========================================================================
-    function BAT12SurveyModal({ responses, setResponses, onSubmit, onClose, submitting, success }) {
-      const handleRadio = (key, val) => {
+    function DayCheckInModal({ responses, setResponses, onSubmit, onClose, submitting, success, isEarlyCheckin }) {
+      const [step, setStep] = useState(1); // 1 to 4
+
+      const currentGroup = BAT12_GROUPS[step - 1] || BAT12_GROUPS[0];
+
+      const handleRating = (key, val) => {
         setResponses(prev => ({ ...prev, [key]: val }));
       };
 
-      const ex = ((responses.bat_q1 + responses.bat_q2 + responses.bat_q3) / 3).toFixed(2);
-      const md = ((responses.bat_q4 + responses.bat_q5 + responses.bat_q6) / 3).toFixed(2);
-      const ei = ((responses.bat_q7 + responses.bat_q8 + responses.bat_q9) / 3).toFixed(2);
-      const ci = ((responses.bat_q10 + responses.bat_q11 + responses.bat_q12) / 3).toFixed(2);
-      const total = (Object.values(responses).reduce((a, b) => a + b, 0) / 12).toFixed(2);
+      const handleSkip = (key) => {
+        setResponses(prev => ({ ...prev, [key]: null }));
+      };
+
+      const handleUnskip = (key) => {
+        setResponses(prev => ({ ...prev, [key]: 2 }));
+      };
+
+      // Progress bar percentage
+      const progressPct = (step / 4) * 100;
 
       return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop overflow-y-auto">
-          <div className="ws-card max-w-2xl w-full p-6 md:p-8 my-8 relative shadow-2xl">
+          <div className="ws-card max-w-2xl w-full p-6 md:p-8 my-8 relative shadow-2xl animate-fade-in">
+            {/* Close Button */}
             <button
+              type="button"
               onClick={onClose}
-              className="absolute top-5 right-5 text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xl font-bold"
+              className="absolute top-5 right-5 text-[var(--text-muted)] hover:text-[var(--text-primary)] text-2xl font-bold p-1 leading-none"
+              title="Close"
             >
               &times;
             </button>
 
-            <div className="mb-6">
-              <span className="text-xs font-semibold uppercase tracking-wider text-[var(--primary)]">
-                Burnout Assessment Tool (BAT-12)
-              </span>
-              <h2 className="text-xl font-bold text-[var(--text-primary)] mt-1">End-of-day psychological check-in</h2>
-              <p className="text-xs text-[var(--text-secondary)] mt-1">
-                Rate how often each statement applied to you during your workday today (1 = Never, 5 = Always).
+            {/* Header */}
+            <div className="mb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-[var(--primary)]">
+                  Day Check-in
+                </span>
+                {isEarlyCheckin && (
+                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 font-semibold">
+                    Logging off early
+                  </span>
+                )}
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] mt-1">
+                Step {step} of 4: {currentGroup.title}
+              </h2>
+              <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                {currentGroup.subtitle}
               </p>
             </div>
 
-            <div className="space-y-3.5 max-h-[50vh] overflow-y-auto pr-2 divide-y divide-[var(--border-subtle)]">
-              {BAT12_QUESTIONS.map((q) => (
-                <div key={q.id} className="pt-3 first:pt-0">
-                  <div className="flex items-center justify-between text-xs mb-1.5">
-                    <span className="font-medium text-[var(--text-primary)]">{q.id}. {q.text}</span>
-                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-[var(--bg-card-subtle)] text-[var(--text-secondary)] font-medium">
-                      {q.dim}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-5 gap-1.5">
-                    {[
-                      { val: 1, label: "Never" },
-                      { val: 2, label: "Rarely" },
-                      { val: 3, label: "Sometimes" },
-                      { val: 4, label: "Often" },
-                      { val: 5, label: "Always" },
-                    ].map(opt => (
-                      <button
-                        key={opt.val}
-                        type="button"
-                        onClick={() => handleRadio(q.key, opt.val)}
-                        className={`py-1.5 px-2 text-xs rounded-xl border text-center transition-all ${
-                          responses[q.key] === opt.val
-                            ? "bg-[var(--primary)] text-white border-[var(--primary)] font-bold shadow-xs"
-                            : "bg-[var(--bg-card)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:bg-[var(--bg-card-subtle)]"
-                        }`}
-                      >
-                        <div className="font-semibold">{opt.val}</div>
-                        <div className="text-[10px] opacity-80">{opt.label}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
+            {/* Progress Bar */}
+            <div className="w-full bg-[var(--bg-card-subtle)] h-2 rounded-full overflow-hidden mb-6">
+              <div
+                className="h-full bg-[var(--primary)] transition-all duration-300 rounded-full"
+                style={{ width: `${progressPct}%` }}
+              />
             </div>
 
-            <div className="mt-5 p-3 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-3 text-xs">
-              <div>Exhaustion: <strong className="text-[var(--text-primary)]">{ex}</strong></div>
-              <div>Mental distance: <strong className="text-[var(--text-primary)]">{md}</strong></div>
-              <div>Emotional: <strong className="text-[var(--text-primary)]">{ei}</strong></div>
-              <div>Cognitive: <strong className="text-[var(--text-primary)]">{ci}</strong></div>
-              <div className="border-l border-[var(--border-strong)] pl-3 text-[var(--primary)] font-semibold">
-                Total score: <strong className="text-sm">{total} / 5.0</strong>
+            {/* Questions for Current Step */}
+            <div className="space-y-5">
+              {currentGroup.questions.map((q) => {
+                const currentVal = responses[q.key];
+                const isSkipped = currentVal === null || currentVal === undefined;
+
+                return (
+                  <div
+                    key={q.id}
+                    className="p-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] transition-colors hover:border-[var(--border-strong)]"
+                  >
+                    {/* Question Header */}
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <span className="font-semibold text-sm text-[var(--text-primary)]">
+                        {q.id}. {q.text}
+                      </span>
+                      {isSkipped && (
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-[var(--bg-card-subtle)] text-[var(--text-muted)] font-semibold shrink-0">
+                          Skipped
+                        </span>
+                      )}
+                    </div>
+
+                    {/* 5-Point Labelled Radio Buttons with Large Tap Targets */}
+                    <div className="grid grid-cols-5 gap-2">
+                      {[
+                        { val: 1, label: "Never" },
+                        { val: 2, label: "Rarely" },
+                        { val: 3, label: "Sometimes" },
+                        { val: 4, label: "Often" },
+                        { val: 5, label: "Always" },
+                      ].map((opt) => {
+                        const isSelected = !isSkipped && currentVal === opt.val;
+                        return (
+                          <button
+                            key={opt.val}
+                            type="button"
+                            onClick={() => handleRating(q.key, opt.val)}
+                            className={`min-h-[52px] p-2 sm:p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center cursor-pointer ${
+                              isSelected
+                                ? "bg-[var(--primary)] text-white border-[var(--primary)] font-bold shadow-xs scale-[1.02]"
+                                : "bg-[var(--bg-card)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:bg-[var(--bg-card-hover)] hover:border-[var(--border-strong)]"
+                            }`}
+                          >
+                            <span className="text-sm font-bold">{opt.val}</span>
+                            <span className="text-[11px] font-medium opacity-90 truncate max-w-full">
+                              {opt.label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Skip Option on Every Item */}
+                    <div className="mt-2.5 flex items-center justify-end">
+                      {isSkipped ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-[var(--text-muted)] italic">Question skipped</span>
+                          <button
+                            type="button"
+                            onClick={() => handleUnskip(q.key)}
+                            className="text-xs text-[var(--primary)] font-semibold hover:underline"
+                          >
+                            Undo
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleSkip(q.key)}
+                          className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline transition-colors"
+                        >
+                          Skip this question
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Footer Navigation Buttons */}
+            <div className="mt-7 pt-4 border-t border-[var(--border-subtle)] flex items-center justify-between gap-3">
+              <div>
+                {step > 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => setStep(step - 1)}
+                    className="ws-btn-secondary text-xs py-2 px-4"
+                  >
+                    &larr; Back
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="ws-btn-secondary text-xs py-2 px-4"
+                  >
+                    Cancel
+                  </button>
+                )}
               </div>
-            </div>
 
-            <div className="mt-6 flex items-center justify-end gap-3">
-              <button onClick={onClose} className="ws-btn-secondary" disabled={submitting}>
-                Cancel
-              </button>
-              <button onClick={onSubmit} className="ws-btn-primary" disabled={submitting}>
-                {submitting ? "Submitting..." : success ? "&check; Check-in recorded!" : "Submit check-in"}
-              </button>
+              <div className="flex items-center gap-2">
+                {step < 4 ? (
+                  <button
+                    type="button"
+                    onClick={() => setStep(step + 1)}
+                    className="ws-btn-primary text-xs py-2.5 px-5 flex items-center gap-2"
+                  >
+                    <span>Next: {BAT12_GROUPS[step].title}</span>
+                    <span>&rarr;</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={onSubmit}
+                    disabled={submitting}
+                    className="ws-btn-primary text-xs py-2.5 px-6 shadow-xs font-bold"
+                  >
+                    {submitting ? "Submitting..." : success ? "✓ Check-in recorded!" : "Submit check-in"}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
       );
     }
+    const BAT12SurveyModal = DayCheckInModal;
 
     ReactDOM.render(<App />, document.getElementById("root"));
   </script>

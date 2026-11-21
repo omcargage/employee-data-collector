@@ -168,7 +168,9 @@ def startup_event():
 class BAT12Submission(BaseModel):
     employee_id: str
     logical_day: Optional[str] = None
-    items: Dict[str, int]
+    items: Dict[str, Optional[int]]
+    early_checkin: Optional[bool] = False
+    submitted_at: Optional[str] = None
 
 
 @app.get("/api/health")
@@ -223,7 +225,27 @@ def get_employee_dashboard(
                 "relative_deviations": {},
                 "recent_7d_telemetry": [],
                 "recovery_nudges": ["System is active and observing daily work patterns."],
-                "bat12_summary": None,
+                "bat12_summary": {
+                    "today_submitted": False,
+                    "today_early_checkin": False,
+                    "submitted_at": None,
+                    "today_score": 1.5,
+                    "today_score_text": "1.5 out of 5 (low)",
+                    "today_status": "Green",
+                    "today_exhaustion": 1.5,
+                    "today_mental_distance": 1.5,
+                    "today_emotional": 1.5,
+                    "today_cognitive": 1.5,
+                    "baseline_bat_score": 1.5,
+                    "baseline_bat_status": "Low",
+                    "usual_checkin_score": 1.5,
+                    "usual_checkin_desc": "low",
+                    "usual_checkin_text": "Your usual check-in score: 1.5 (low)",
+                    "usual_range": {"min": 1.2, "max": 1.8},
+                    "checkin_history": [],
+                    "verified_stress_day": False,
+                    "raw_responses": None,
+                },
             }
 
     # 2. DEMO MODE: Read from synchronized master telemetry dataset
@@ -249,8 +271,11 @@ def get_employee_dashboard(
     n_days = len(sub_df)
 
     # Incorporate any recently submitted live BAT-12 surveys for this employee
-    sub_key = f"{employee_id}:{sub_df['date'].iloc[-1]}"
+    sub_date_str = str(sub_df['date'].iloc[-1])
+    sub_key = f"{employee_id}:{sub_date_str}"
     recent_bat = DATA_CACHE["recent_bat_submissions"].get(sub_key)
+    if not recent_bat:
+        recent_bat = DATA_CACHE["recent_bat_submissions"].get(f"{employee_id}:latest")
 
     # 3. Predict with Neural Network
     prediction = predictor.predict_daily(sub_df) if predictor else {}
@@ -359,6 +384,77 @@ def get_employee_dashboard(
     is_calibrated = n_days >= 14
     pred_status = prediction.get("predicted_status_5d", "Green") if is_calibrated else "INSUFFICIENT_DATA"
 
+    # Build checkin history (last 30 days) and usual BAT baseline
+    checkin_slice = sub_df.iloc[-30:].copy()
+    checkin_history = []
+    for _, r in checkin_slice.iterrows():
+        checkin_history.append({
+            "date": str(r["date"]),
+            "day_name": datetime.strptime(str(r["date"]), "%Y-%m-%d").strftime("%a"),
+            "is_weekend": bool(r["is_weekend"]),
+            "score": round(float(r.get("bat_total_score", 1.5)), 2),
+            "status": r.get("bat_status", "Green"),
+            "exhaustion": round(float(r.get("bat_exhaustion", 1.4)), 2),
+            "mental_distance": round(float(r.get("bat_mental_distance", 1.3)), 2),
+            "emotional": round(float(r.get("bat_emotional_impairment", 1.3)), 2),
+            "cognitive": round(float(r.get("bat_cognitive_impairment", 1.3)), 2),
+        })
+
+    # Baseline usual BAT score from personal 14-day baseline
+    base_bat_val = float(weekday_base["bat_total_score"].mean()) if "bat_total_score" in weekday_base else 1.5
+    if base_bat_val >= 3.65:
+        base_desc = "high"
+    elif base_bat_val >= 3.02:
+        base_desc = "elevated"
+    elif base_bat_val >= 2.59:
+        base_desc = "mild"
+    else:
+        base_desc = "low"
+
+    today_score_val = recent_bat["total_bat_score"] if recent_bat else round(float(latest_row.get("bat_total_score", 1.5)), 2)
+    if today_score_val >= 3.65:
+        today_desc = "high"
+    elif today_score_val >= 3.02:
+        today_desc = "elevated"
+    elif today_score_val >= 2.59:
+        today_desc = "mild"
+    else:
+        today_desc = "low"
+
+    if recent_bat and len(checkin_history) > 0:
+        checkin_history[-1]["score"] = recent_bat["total_bat_score"]
+        checkin_history[-1]["status"] = recent_bat["clinical_status"]
+        checkin_history[-1]["exhaustion"] = recent_bat["exhaustion_score"]
+        checkin_history[-1]["mental_distance"] = recent_bat["mental_distance_score"]
+        checkin_history[-1]["emotional"] = recent_bat["emotional_impairment_score"]
+        checkin_history[-1]["cognitive"] = recent_bat["cognitive_impairment_score"]
+
+    bat12_summary = {
+        "today_submitted": recent_bat is not None,
+        "today_early_checkin": recent_bat.get("early_checkin", False) if recent_bat else False,
+        "submitted_at": recent_bat.get("submitted_at") if recent_bat else None,
+        "today_score": today_score_val,
+        "today_score_text": f"{today_score_val:.1f} out of 5 ({today_desc})",
+        "today_score_desc": today_desc,
+        "today_status": recent_bat["clinical_status"] if recent_bat else latest_row.get("bat_status", "Green"),
+        "today_exhaustion": recent_bat["exhaustion_score"] if recent_bat else round(float(latest_row.get("bat_exhaustion", 1.4)), 2),
+        "today_mental_distance": recent_bat["mental_distance_score"] if recent_bat else round(float(latest_row.get("bat_mental_distance", 1.3)), 2),
+        "today_emotional": recent_bat["emotional_impairment_score"] if recent_bat else round(float(latest_row.get("bat_emotional_impairment", 1.3)), 2),
+        "today_cognitive": recent_bat["cognitive_impairment_score"] if recent_bat else round(float(latest_row.get("bat_cognitive_impairment", 1.3)), 2),
+        "baseline_bat_score": round(base_bat_val, 1),
+        "baseline_bat_status": base_desc.capitalize(),
+        "usual_checkin_score": round(base_bat_val, 1),
+        "usual_checkin_desc": base_desc,
+        "usual_checkin_text": f"Your usual check-in score: {base_bat_val:.1f} ({base_desc})",
+        "usual_range": {
+            "min": round(max(1.0, base_bat_val - 0.3), 1),
+            "max": round(min(5.0, base_bat_val + 0.3), 1),
+        },
+        "checkin_history": checkin_history,
+        "verified_stress_day": recent_bat["verified_stressed_day"] if recent_bat else bool(latest_row.get("bat_verified_stress_day", 0)),
+        "raw_responses": recent_bat.get("raw_responses", {}) if recent_bat else None,
+    }
+
     return {
         "employee_id": employee_id,
         "name": persona_meta["name"],
@@ -385,15 +481,7 @@ def get_employee_dashboard(
         "recent_30d_telemetry": telemetry_30d,
         "baseline_bands": baseline_bands,
         "recovery_nudges": nudges,
-        "bat12_summary": {
-            "baseline_bat_score": baseline_stats.bat_baseline_score if baseline_stats else None,
-            "baseline_bat_status": baseline_stats.bat_baseline_status if baseline_stats else "Green",
-            "today_score": recent_bat["total_bat_score"] if recent_bat else round(float(latest_row.get("bat_total_score", 1.5)), 2),
-            "today_status": recent_bat["clinical_status"] if recent_bat else latest_row.get("bat_status", "Green"),
-            "today_exhaustion": recent_bat["exhaustion_score"] if recent_bat else round(float(latest_row.get("bat_exhaustion", 1.4)), 2),
-            "today_cognitive": recent_bat["cognitive_impairment_score"] if recent_bat else round(float(latest_row.get("bat_cognitive_impairment", 1.3)), 2),
-            "verified_stress_day": recent_bat["verified_stressed_day"] if recent_bat else bool(latest_row.get("bat_verified_stress_day", 0)),
-        },
+        "bat12_summary": bat12_summary,
     }
 
 
@@ -404,33 +492,74 @@ def submit_bat12_survey(submission: BAT12Submission):
     except Exception:
         logical_day = datetime.now(timezone.utc).date()
 
-    summary = compute_bat12_scores(items=submission.items, logical_day=logical_day)
+    # Handle skipped items by imputing dimension mean or neutral 2
+    raw_items = submission.items or {}
+    groups = {
+        "exhaustion": ["bat_q1", "bat_q2", "bat_q3"],
+        "mental_distance": ["bat_q4", "bat_q5", "bat_q6"],
+        "emotional_impairment": ["bat_q7", "bat_q8", "bat_q9"],
+        "cognitive_impairment": ["bat_q10", "bat_q11", "bat_q12"],
+    }
+    cleaned_items = {}
+    for group_name, keys in groups.items():
+        answered = [raw_items[k] for k in keys if k in raw_items and raw_items[k] is not None and 1 <= raw_items[k] <= 5]
+        mean_val = sum(answered) / len(answered) if answered else 2.0
+        imputed_int = int(round(mean_val))
+        for k in keys:
+            if k in raw_items and raw_items[k] is not None and 1 <= raw_items[k] <= 5:
+                cleaned_items[k] = int(raw_items[k])
+            else:
+                cleaned_items[k] = imputed_int
+
+    summary = compute_bat12_scores(items=cleaned_items, logical_day=logical_day)
+
+    # Score descriptor text
+    score = summary.total_bat_score
+    if score >= 3.65:
+        score_desc = "high"
+    elif score >= 3.02:
+        score_desc = "elevated"
+    elif score >= 2.59:
+        score_desc = "mild"
+    else:
+        score_desc = "low"
+
+    submitted_timestamp = submission.submitted_at or datetime.now(timezone.utc).isoformat()
 
     # Store in recent cache for UI immediate display
     cache_key = f"{submission.employee_id}:{logical_day.isoformat()}"
-    DATA_CACHE["recent_bat_submissions"][cache_key] = {
+    sub_data = {
         "total_bat_score": summary.total_bat_score,
+        "score_desc": score_desc,
+        "score_text": f"{summary.total_bat_score:.1f} out of 5 ({score_desc})",
         "exhaustion_score": summary.exhaustion_score,
         "mental_distance_score": summary.mental_distance_score,
         "emotional_impairment_score": summary.emotional_impairment_score,
         "cognitive_impairment_score": summary.cognitive_impairment_score,
         "clinical_status": summary.clinical_status,
         "verified_stressed_day": summary.verified_stressed_day,
-        "submitted_at": datetime.now(timezone.utc).isoformat(),
+        "early_checkin": bool(submission.early_checkin),
+        "submitted_at": submitted_timestamp,
+        "raw_responses": raw_items,
     }
+    DATA_CACHE["recent_bat_submissions"][cache_key] = sub_data
+    DATA_CACHE["recent_bat_submissions"][f"{submission.employee_id}:latest"] = sub_data
 
     # Store in local DB if connected
     if DATA_CACHE["db"]:
         try:
             from edc_agent.privacy.self_report import record_bat12_checkin
-            record_bat12_checkin(DATA_CACHE["db"], logical_day=logical_day, items=submission.items)
+            record_bat12_checkin(DATA_CACHE["db"], logical_day=logical_day, items=cleaned_items)
         except Exception as e:
             print(f"[WorkSense] DB write error: {e}")
 
     return {
         "success": True,
-        "message": f"BAT-12 survey recorded successfully for {logical_day.isoformat()}",
+        "message": f"Day Check-in recorded successfully for {logical_day.isoformat()}",
         "summary": summary,
+        "score_text": f"{summary.total_bat_score:.1f} out of 5 ({score_desc})",
+        "early_checkin": bool(submission.early_checkin),
+        "submitted_at": submitted_timestamp,
     }
 
 
