@@ -255,22 +255,60 @@ def get_employee_dashboard(
     # 3. Predict with Neural Network
     prediction = predictor.predict_daily(sub_df) if predictor else {}
 
-    # Extract 7-day telemetry slice
-    recent_slice = sub_df.iloc[-7:].copy()
-    telemetry_7d = []
-    for _, row in recent_slice.iterrows():
-        telemetry_7d.append({
+    # Extract 7-day and 30-day telemetry slices
+    def build_telemetry_item(row):
+        return {
             "date": str(row["date"]),
             "day_name": datetime.strptime(str(row["date"]), "%Y-%m-%d").strftime("%a"),
             "is_weekend": bool(row["is_weekend"]),
             "stretch_mins": round(float(row["longest_stretch_duration_mins"]), 1),
             "lunch_mins": round(float(row["longest_lunch_break_mins"]), 1),
+            "focus_mins": round(float(row.get("avg_focus_block_mins", row.get("total_focus_time_hours", 2.2) * 60)), 1),
+            "after_hours_mins": round(float(row.get("after_hours_active_minutes", 0)), 1),
             "after_hours_msgs": int(row["msgs_sent_after_hours"]),
             "wpm": round(float(row["daily_mean_wpm"]), 1),
             "backspace_ratio": round(float(row["daily_backspace_ratio"]) * 100, 1),
+            "mouse_speed": round(float(row.get("cursor_speed_mean", row.get("average_speed_px_s", 280))), 1),
             "bat_score": round(float(row.get("bat_total_score", 1.5)), 2),
             "bat_status": row.get("bat_status", "Green"),
-        })
+        }
+
+    recent_7_slice = sub_df.iloc[-7:].copy()
+    telemetry_7d = [build_telemetry_item(r) for _, r in recent_7_slice.iterrows()]
+
+    recent_30_slice = sub_df.iloc[-30:].copy()
+    telemetry_30d = [build_telemetry_item(r) for _, r in recent_30_slice.iterrows()]
+
+    # Compute 14-day personal baseline normal bands
+    base_slice = sub_df.iloc[:min(14, len(sub_df))]
+    weekday_base = base_slice[base_slice["is_weekend"] == 0]
+    if len(weekday_base) == 0:
+        weekday_base = base_slice
+
+    def get_metric_band(series, multiplier=1.2):
+        s = pd.to_numeric(series, errors="coerce").dropna()
+        if len(s) == 0:
+            return {"median": 0.0, "min": 0.0, "max": 0.0}
+        med = float(s.median())
+        mad = float((s - med).abs().median())
+        if mad == 0:
+            mad = max(1.0, med * 0.15)
+        return {
+            "median": round(med, 1),
+            "min": round(max(0.0, med - multiplier * mad), 1),
+            "max": round(med + multiplier * mad, 1),
+        }
+
+    baseline_bands = {
+        "stretch": get_metric_band(weekday_base["longest_stretch_duration_mins"]),
+        "lunch": get_metric_band(weekday_base["longest_lunch_break_mins"]),
+        "focus": get_metric_band(weekday_base.get("avg_focus_block_mins", weekday_base.get("total_focus_time_hours", pd.Series([2.2])) * 60)),
+        "after_hours_mins": get_metric_band(weekday_base.get("after_hours_active_minutes", pd.Series([0]))),
+        "after_hours_msgs": get_metric_band(weekday_base["msgs_sent_after_hours"]),
+        "wpm": get_metric_band(weekday_base["daily_mean_wpm"]),
+        "backspace_ratio": get_metric_band(weekday_base["daily_backspace_ratio"] * 100),
+        "mouse": get_metric_band(weekday_base.get("cursor_speed_mean", weekday_base.get("average_speed_px_s", pd.Series([280])))),
+    }
 
     # Generate Personalized Nudges
     latest_row = sub_df.iloc[-1]
@@ -344,6 +382,8 @@ def get_employee_dashboard(
         "primary_drivers": prediction.get("primary_drivers", []) if is_calibrated else [],
         "relative_deviations": deviations,
         "recent_7d_telemetry": telemetry_7d,
+        "recent_30d_telemetry": telemetry_30d,
+        "baseline_bands": baseline_bands,
         "recovery_nudges": nudges,
         "bat12_summary": {
             "baseline_bat_score": baseline_stats.bat_baseline_score if baseline_stats else None,
