@@ -1,140 +1,213 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WorkSense — Early-Warning Burnout Prevention</title>
 
-  <!-- Font Declarations from Segoe UI Variable Style Guide -->
+  <!-- Google Font: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Design Tokens (CSS Variables: Light and Dark set) -->
   <style>
-    @font-face {
-      font-family: 'Segoe UI Variable Text';
-      src: url('https://media.brand.dev/fonts/4c372cb2e01d890996a8ccb6cf285ff24a0542488a00e0046caf0c0703d4302a.woff2') format('woff2');
-      font-weight: 300 700;
-      font-style: normal;
-    }
-
-    @font-face {
-      font-family: 'Segoe UI Variable Display';
-      src: url('https://media.brand.dev/fonts/4c372cb2e01d890996a8ccb6cf285ff24a0542488a00e0046caf0c0703d4302a.woff2') format('woff2');
-      font-weight: 300 700;
-      font-style: normal;
-    }
-
     :root {
-      --color-accent: #0078d4;
-      --color-background: #ffffff;
-      --color-text: #000000;
-      --font-text: 'Segoe UI Variable Text', 'Segoe UI', segoeui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
-      --font-display: 'Segoe UI Variable Display', 'Segoe UI', segoeui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
-      --shadow-md: rgba(0, 0, 0, 0.12) 0px 8px 32px 0px, rgba(0, 0, 0, 0.12) 0px 8px 16px 0px;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+      /* Light Theme */
+      --bg-app: #F7F6F3;
+      --bg-sidebar: #FFFFFF;
+      --bg-card: #FFFFFF;
+      --bg-card-subtle: #F0EFEA;
+      --bg-card-hover: #FAF9F6;
+      --border-subtle: #E8E6DF;
+      --border-strong: #D5D2C8;
+      --text-primary: #181816;
+      --text-secondary: #5E5C56;
+      --text-muted: #8A8880;
+
+      --primary: #1F5C63;
+      --primary-hover: #17484E;
+      --primary-subtle: rgba(31, 92, 99, 0.08);
+      --primary-border: rgba(31, 92, 99, 0.2);
+      --primary-text: #FFFFFF;
+
+      /* Status Colors (always paired with icon + word) */
+      /* Steady = sage */
+      --status-steady: #4E7A58;
+      --status-steady-bg: #EDF4EF;
+      --status-steady-border: #C8DEC9;
+
+      /* Stretched = sand */
+      --status-stretched: #B58934;
+      --status-stretched-bg: #FBF5E8;
+      --status-stretched-border: #EFE0BD;
+
+      /* Strained = terracotta */
+      --status-strained: #C45A38;
+      --status-strained-bg: #FAECE6;
+      --status-strained-border: #F1CBBF;
+
+      /* Overloaded = deep rose */
+      --status-overloaded: #A8384E;
+      --status-overloaded-bg: #F7E8EB;
+      --status-overloaded-border: #ECC1CA;
+
+      /* Calibrating = slate */
+      --status-calibrating: #4A6572;
+      --status-calibrating-bg: #EDF2F4;
+      --status-calibrating-border: #CFD8DC;
+
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-card: 18px;
+      --radius-pill: 9999px;
+
+      --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.03), 0 1px 2px rgba(0, 0, 0, 0.02);
+      --shadow-card: 0 3px 14px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.02);
+      --shadow-dock: 0 -4px 20px rgba(0, 0, 0, 0.05), 0 -1px 3px rgba(0, 0, 0, 0.02);
+    }
+
+    [data-theme="dark"] {
+      --bg-app: #151615;
+      --bg-sidebar: #1C1E1C;
+      --bg-card: #222422;
+      --bg-card-subtle: #2B2E2B;
+      --bg-card-hover: #272A27;
+      --border-subtle: #2F332F;
+      --border-strong: #404540;
+      --text-primary: #F3F3F1;
+      --text-secondary: #B1AFA7;
+      --text-muted: #7E7C74;
+
+      --primary: #3CA1AC;
+      --primary-hover: #4EB4BF;
+      --primary-subtle: rgba(60, 161, 172, 0.15);
+      --primary-border: rgba(60, 161, 172, 0.3);
+      --primary-text: #FFFFFF;
+
+      --status-steady: #68A074;
+      --status-steady-bg: rgba(78, 122, 88, 0.2);
+      --status-steady-border: rgba(104, 160, 116, 0.35);
+
+      --status-stretched: #D4A853;
+      --status-stretched-bg: rgba(181, 137, 52, 0.2);
+      --status-stretched-border: rgba(212, 168, 83, 0.35);
+
+      --status-strained: #DE7755;
+      --status-strained-bg: rgba(196, 90, 56, 0.2);
+      --status-strained-border: rgba(222, 119, 85, 0.35);
+
+      --status-overloaded: #C6546B;
+      --status-overloaded-bg: rgba(168, 56, 78, 0.2);
+      --status-overloaded-border: rgba(198, 84, 107, 0.35);
+
+      --status-calibrating: #7C98A6;
+      --status-calibrating-bg: rgba(74, 101, 114, 0.2);
+      --status-calibrating-border: rgba(124, 152, 166, 0.35);
+
+      --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.3);
+      --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.4);
+      --shadow-dock: 0 -4px 20px rgba(0, 0, 0, 0.5);
     }
 
     body {
       margin: 0;
       padding: 0;
-      background-color: #fafbfc;
-      color: var(--color-text);
-      font-family: var(--font-text);
+      background-color: var(--bg-app);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
       font-size: 16px;
-      line-height: 24px;
-      letter-spacing: -0.48px;
+      line-height: 1.5;
       -webkit-font-smoothing: antialiased;
+      transition: background-color 0.2s ease, color 0.2s ease;
     }
 
-    h1 {
-      font-family: var(--font-text);
-      font-size: 42px;
-      font-weight: 600;
-      line-height: 50px;
-      letter-spacing: -1.2px;
-      margin: 0;
-    }
-
-    h2 {
-      font-family: var(--font-display);
-      font-size: 28px;
-      font-weight: 600;
-      line-height: 36px;
-      letter-spacing: -0.8px;
-      margin: 0;
-    }
-
-    h3 {
-      font-family: var(--font-display);
-      font-size: 20px;
-      font-weight: 600;
-      line-height: 28px;
-      letter-spacing: -0.3px;
-      margin: 0;
-    }
-
-    h4 {
-      font-family: var(--font-text);
-      font-size: 17px;
-      font-weight: 600;
-      line-height: 22px;
-      letter-spacing: 0px;
-      margin: 0;
-    }
-
+    /* Universal Card & Component Classes */
     .ws-card {
-      background-color: #ffffff;
-      border: 1px solid #eef2f6;
-      border-radius: 16px;
-      box-shadow: var(--shadow-md);
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-card);
+      transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     }
 
     .ws-btn-primary {
-      background-color: var(--color-accent);
-      color: #ffffff;
+      background-color: var(--primary);
+      color: var(--primary-text);
       border: 1px solid transparent;
-      border-radius: 20px;
-      padding: 8px 20px;
-      font-size: 15px;
+      border-radius: var(--radius-pill);
+      padding: 8px 18px;
+      font-size: 14px;
       font-weight: 600;
-      font-family: var(--font-text);
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      transition: background-color 0.15s ease, transform 0.1s ease;
-      min-height: 40px;
+      transition: all 0.15s ease;
+      min-height: 38px;
       text-decoration: none;
     }
 
     .ws-btn-primary:hover {
-      background-color: #0060aa;
-    }
-
-    .ws-btn-primary:active {
-      transform: scale(0.98);
+      background-color: var(--primary-hover);
+      transform: translateY(-1px);
     }
 
     .ws-btn-secondary {
       background-color: transparent;
-      color: #262626;
-      border: 1px solid #262626;
-      border-radius: 20px;
-      padding: 8px 18px;
-      font-size: 15px;
-      font-weight: 600;
-      font-family: var(--font-text);
+      color: var(--text-primary);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-pill);
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 500;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      transition: background-color 0.15s ease;
-      min-height: 40px;
+      transition: all 0.15s ease;
+      min-height: 38px;
       text-decoration: none;
     }
 
     .ws-btn-secondary:hover {
-      background-color: #f3f4f6;
+      background-color: var(--bg-card-subtle);
+    }
+
+    .ws-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid transparent;
+    }
+
+    /* Shimmer Skeleton Animation */
+    @keyframes shimmer {
+      0% {
+        background-position: -200% 0;
+      }
+      100% {
+        background-position: 200% 0;
+      }
+    }
+
+    .ws-skeleton {
+      background: linear-gradient(90deg, var(--bg-card-subtle) 25%, var(--bg-card-hover) 50%, var(--bg-card-subtle) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 8px;
     }
 
     /* Modal Backdrop */
@@ -142,11 +215,22 @@
       background-color: rgba(0, 0, 0, 0.45);
       backdrop-filter: blur(4px);
     }
+
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-strong);
+      border-radius: 9999px;
+    }
   </style>
 
-  <!-- Tailwind CSS CDN for fluid utility styling -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- React 18, ReactDOM, and Babel Standalone for direct in-browser compilation -->
+  <!-- React 18, ReactDOM, and Babel Standalone for in-browser compilation -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -156,49 +240,499 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect } = React;
+    const { useState, useEffect, useMemo } = React;
 
-    // BAT-12 Questionnaire Definitions
+    // =========================================================================
+    // STATUS METADATA: ALWAYS ICON + WORD (NEVER COLOR ALONE)
+    // Sage = Steady, Sand = Stretched, Terracotta = Strained, Deep Rose = Overloaded
+    // =========================================================================
+    const STATUS_META = {
+      Green: {
+        word: "Steady",
+        color: "var(--status-steady)",
+        bg: "var(--status-steady-bg)",
+        border: "var(--status-steady-border)",
+        icon: (
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        ),
+        desc: "Pace is balanced and consistent with your personal baseline."
+      },
+      Yellow: {
+        word: "Stretched",
+        color: "var(--status-stretched)",
+        bg: "var(--status-stretched-bg)",
+        border: "var(--status-stretched-border)",
+        icon: (
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        ),
+        desc: "Mild workload variance or minor stretch beyond your standard rhythm."
+      },
+      Orange: {
+        word: "Strained",
+        color: "var(--status-strained)",
+        bg: "var(--status-strained-bg)",
+        border: "var(--status-strained-border)",
+        icon: (
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        ),
+        desc: "Elevated risk pattern detected 5+ working days prior to acute fatigue."
+      },
+      Red: {
+        word: "Overloaded",
+        color: "var(--status-overloaded)",
+        bg: "var(--status-overloaded-bg)",
+        border: "var(--status-overloaded-border)",
+        icon: (
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+          </svg>
+        ),
+        desc: "Sustained behavioral disruption. Active recovery recommended."
+      },
+      INSUFFICIENT_DATA: {
+        word: "Calibrating",
+        color: "var(--status-calibrating)",
+        bg: "var(--status-calibrating-bg)",
+        border: "var(--status-calibrating-border)",
+        icon: (
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        ),
+        desc: "Establishing personal 14-day baseline. No burnout alerts generated."
+      }
+    };
+
+    // BAT-12 Short Version Questionnaire
     const BAT12_QUESTIONS = [
       { id: 1, key: "bat_q1", dim: "Exhaustion", text: "At work, I feel mentally exhausted" },
       { id: 2, key: "bat_q2", dim: "Exhaustion", text: "After a day at work, I find it hard to recover my energy" },
       { id: 3, key: "bat_q3", dim: "Exhaustion", text: "At work, I feel physically exhausted" },
-      { id: 4, key: "bat_q4", dim: "Mental Distance", text: "I struggle to find any enthusiasm for my work" },
-      { id: 5, key: "bat_q5", dim: "Mental Distance", text: "I feel a strong aversion towards my job" },
-      { id: 6, key: "bat_q6", dim: "Mental Distance", text: "I'm cynical about what my work means to others" },
-      { id: 7, key: "bat_q7", dim: "Emotional Impairment", text: "At work, I feel unable to control my emotions" },
-      { id: 8, key: "bat_q8", dim: "Emotional Impairment", text: "I do not recognize myself in the way I react emotionally at work" },
-      { id: 9, key: "bat_q9", dim: "Emotional Impairment", text: "At work I may overreact unintentionally" },
-      { id: 10, key: "bat_q10", dim: "Cognitive Impairment", text: "At work, I have trouble staying focused" },
-      { id: 11, key: "bat_q11", dim: "Cognitive Impairment", text: "When I'm working, I have trouble concentrating" },
-      { id: 12, key: "bat_q12", dim: "Cognitive Impairment", text: "I make mistakes in my work because I have my mind on other things" }
+      { id: 4, key: "bat_q4", dim: "Mental distance", text: "I struggle to find any enthusiasm for my work" },
+      { id: 5, key: "bat_q5", dim: "Mental distance", text: "I feel a strong aversion towards my job" },
+      { id: 6, key: "bat_q6", dim: "Mental distance", text: "I'm cynical about what my work means to others" },
+      { id: 7, key: "bat_q7", dim: "Emotional impairment", text: "At work, I feel unable to control my emotions" },
+      { id: 8, key: "bat_q8", dim: "Emotional impairment", text: "I do not recognize myself in the way I react emotionally at work" },
+      { id: 9, key: "bat_q9", dim: "Emotional impairment", text: "At work I may overreact unintentionally" },
+      { id: 10, key: "bat_q10", dim: "Cognitive impairment", text: "At work, I have trouble staying focused" },
+      { id: 11, key: "bat_q11", dim: "Cognitive impairment", text: "When I'm working, I have trouble concentrating" },
+      { id: 12, key: "bat_q12", dim: "Cognitive impairment", text: "I make mistakes in my work because I have my mind on other things" }
     ];
 
+    // =========================================================================
+    // REUSABLE COMPONENT: Skeleton
+    // =========================================================================
+    function Skeleton({ type = "card", count = 1, className = "" }) {
+      if (type === "text") {
+        return (
+          <div className={`space-y-2.5 ${className}`}>
+            {Array.from({ length: count }).map((_, i) => (
+              <div key={i} className="h-4 ws-skeleton" style={{ width: i === 0 ? "80%" : "60%" }} />
+            ))}
+          </div>
+        );
+      }
+      if (type === "chart") {
+        return (
+          <div className={`ws-card p-6 ${className}`}>
+            <div className="h-5 w-40 ws-skeleton mb-3" />
+            <div className="h-4 w-64 ws-skeleton mb-6" />
+            <div className="h-48 ws-skeleton rounded-xl" />
+          </div>
+        );
+      }
+      return (
+        <div className={`space-y-4 ${className}`}>
+          {Array.from({ length: count }).map((_, i) => (
+            <div key={i} className="ws-card p-6 space-y-3">
+              <div className="h-5 w-48 ws-skeleton" />
+              <div className="h-4 w-full ws-skeleton" />
+              <div className="h-4 w-3/4 ws-skeleton" />
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // =========================================================================
+    // REUSABLE COMPONENT: EmptyState
+    // =========================================================================
+    function EmptyState({ icon, title, description, actionText, onAction }) {
+      return (
+        <div className="ws-card p-10 text-center flex flex-col items-center justify-center">
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4" style={{ backgroundColor: "var(--primary-subtle)", color: "var(--primary)" }}>
+            {icon || (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            )}
+          </div>
+          <h3 className="text-base font-semibold text-[var(--text-primary)] mb-1">{title}</h3>
+          <p className="text-sm text-[var(--text-secondary)] max-w-md mb-5 leading-relaxed">{description}</p>
+          {actionText && onAction && (
+            <button onClick={onAction} className="ws-btn-primary">
+              {actionText}
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    // =========================================================================
+    // REUSABLE COMPONENT: StatusCard
+    // =========================================================================
+    function StatusCard({
+      statusKey = "Green",
+      description,
+      confidence = 0.9,
+      riskScore = 0.2,
+      primaryDrivers = [],
+      baselineStatus = "Steady",
+      baselineScore = "1.4",
+      todayStatus = "Steady",
+      todayScore = "1.5",
+      isCalibrated = true,
+      onOpenCheckIn
+    }) {
+      const meta = STATUS_META[statusKey] || STATUS_META.Green;
+
+      return (
+        <div className="ws-card p-6 flex flex-col justify-between">
+          <div>
+            {/* Header: Title and Status Badge */}
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <span className="text-xs font-medium text-[var(--text-muted)] tracking-tight">
+                  5-day forward forecast
+                </span>
+                <h2 className="text-xl font-semibold text-[var(--text-primary)] mt-0.5">
+                  Impending trajectory status
+                </h2>
+              </div>
+              <div
+                className="ws-badge text-sm shrink-0"
+                style={{ backgroundColor: meta.bg, color: meta.color, borderColor: meta.border }}
+              >
+                {meta.icon}
+                <span>{meta.word}</span>
+              </div>
+            </div>
+
+            {/* Description Box */}
+            <div
+              className="p-4 rounded-xl mb-5 border transition-colors"
+              style={{ backgroundColor: meta.bg, borderColor: meta.border }}
+            >
+              <div className="text-sm font-medium leading-relaxed" style={{ color: meta.color }}>
+                {description || meta.desc}
+              </div>
+
+              {isCalibrated && (
+                <div className="mt-3 pt-3 border-t flex flex-wrap items-center gap-5 text-xs text-[var(--text-secondary)]" style={{ borderColor: meta.border }}>
+                  <div>
+                    Model confidence: <span className="font-semibold text-[var(--text-primary)]">{(confidence * 100).toFixed(0)}%</span>
+                  </div>
+                  <div>
+                    Risk index: <span className="font-semibold text-[var(--text-primary)]">{(riskScore * 10).toFixed(1)} / 10</span>
+                  </div>
+                  <div>
+                    Horizon: <span className="font-semibold text-[var(--text-primary)]">5+ working days</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Primary Behavioral Contributors */}
+            {primaryDrivers && primaryDrivers.length > 0 && (
+              <div className="mb-4">
+                <div className="text-xs font-semibold text-[var(--text-muted)] mb-2.5">
+                  Primary behavioral contributors
+                </div>
+                <div className="space-y-2">
+                  {primaryDrivers.map((driver, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between text-xs p-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card-subtle)]"
+                    >
+                      <span className="font-medium text-[var(--text-primary)] truncate pr-2">{driver.label}</span>
+                      <span className="font-bold text-[var(--primary)] shrink-0">{driver.attribution_pct}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Baseline Verification Strip */}
+          <div className="pt-4 border-t border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--text-secondary)]">
+            <div>
+              Personal baseline: <span className="font-semibold text-[var(--text-primary)]">{baselineStatus}</span> (BAT mean: {baselineScore})
+            </div>
+            <div>
+              Today's psychological rating: <span className="font-semibold text-[var(--text-primary)]">{todayStatus}</span> ({todayScore} / 5.0)
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // =========================================================================
+    // REUSABLE COMPONENT: DeviationBar
+    // Robust MAD Z-Score relative to personal baseline (Zero = Normal)
+    // =========================================================================
+    function DeviationBar({ label, value = 0, unit = "MAD", hint = "" }) {
+      const isPositive = value > 0;
+      const isExtreme = Math.abs(value) >= 2.0;
+      const pct = Math.min(100, (Math.abs(value) / 5.0) * 100);
+
+      // Color coding using Status Tokens: Sage for normal, Terracotta/Rose for extreme
+      let statusColor = "var(--status-steady)";
+      let statusBg = "var(--status-steady-bg)";
+      let statusWord = "Steady";
+      let statusIcon = (
+        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+        </svg>
+      );
+
+      if (isExtreme) {
+        statusColor = value > 0 ? "var(--status-strained)" : "var(--status-stretched)";
+        statusBg = value > 0 ? "var(--status-strained-bg)" : "var(--status-stretched-bg)";
+        statusWord = value > 0 ? "Elevated" : "Decreased";
+        statusIcon = (
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        );
+      }
+
+      return (
+        <div className="ws-card p-3.5 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-xs mb-1">
+              <span className="font-medium text-[var(--text-primary)] truncate">{label}</span>
+              <span className="ws-badge text-[11px] py-0.5 px-1.5" style={{ backgroundColor: statusBg, color: statusColor }}>
+                {statusIcon}
+                <span>{statusWord}</span>
+              </span>
+            </div>
+            <div className="text-lg font-bold my-1" style={{ color: statusColor }}>
+              {isPositive ? `+${value}` : value} <span className="text-xs font-normal text-[var(--text-muted)]">{unit}</span>
+            </div>
+          </div>
+
+          <div>
+            {/* Bidirectional Divergent Bar */}
+            <div className="w-full h-1.5 bg-[var(--bg-card-subtle)] rounded-full relative overflow-hidden my-1">
+              <div
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: `${pct}%`,
+                  backgroundColor: statusColor,
+                  marginLeft: value < 0 ? "0%" : "auto"
+                }}
+              />
+            </div>
+            <div className="text-[11px] text-[var(--text-muted)] truncate">{hint}</div>
+          </div>
+        </div>
+      );
+    }
+
+    // =========================================================================
+    // REUSABLE COMPONENT: MetricChart
+    // Visual telemetry bars with tooltips and responsive rendering
+    // =========================================================================
+    function MetricChart({ title, subtitle, items = [], dataKey = "stretch_mins", labelKey = "day_name", unit = "mins", maxReference = 180 }) {
+      const [hoveredIndex, setHoveredIndex] = useState(null);
+
+      return (
+        <div className="ws-card p-6">
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div>
+              <h3 className="text-base font-semibold text-[var(--text-primary)]">{title}</h3>
+              {subtitle && <p className="text-xs text-[var(--text-secondary)] mt-0.5">{subtitle}</p>}
+            </div>
+            <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-[var(--bg-card-subtle)] text-[var(--text-secondary)]">
+              7-day telemetry
+            </span>
+          </div>
+
+          <div className="h-44 flex items-end gap-2 pt-4 pb-1 border-b border-[var(--border-subtle)]">
+            {items.map((item, idx) => {
+              const val = item[dataKey] || 0;
+              const heightPct = Math.min(100, Math.max(12, (val / maxReference) * 100));
+              const isAlert = val > maxReference * 0.75;
+              const isSelected = hoveredIndex === idx;
+
+              return (
+                <div
+                  key={idx}
+                  onMouseEnter={() => setHoveredIndex(idx)}
+                  onMouseLeave={() => setHoveredIndex(null)}
+                  className="flex-1 flex flex-col items-center group relative cursor-pointer"
+                >
+                  <div
+                    className="w-full rounded-t-lg transition-all duration-200"
+                    style={{
+                      height: `${heightPct}%`,
+                      backgroundColor: isAlert ? "var(--status-strained)" : "var(--primary)",
+                      opacity: hoveredIndex !== null && !isSelected ? 0.45 : 1
+                    }}
+                  />
+                  {/* Tooltip */}
+                  {isSelected && (
+                    <div className="absolute bottom-full mb-2 bg-[var(--text-primary)] text-[var(--bg-card)] text-[11px] py-1 px-2 rounded-lg shadow-lg whitespace-nowrap z-20 pointer-events-none">
+                      <div className="font-semibold">{item.date} ({item[labelKey]})</div>
+                      <div>{val} {unit}</div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex justify-between text-xs text-[var(--text-muted)] mt-2">
+            {items.map((item, idx) => (
+              <span key={idx} className="flex-1 text-center font-medium">
+                {item[labelKey] || item.date}
+              </span>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // =========================================================================
+    // REUSABLE COMPONENT: NudgeCard
+    // Contextual recovery recommendations
+    // =========================================================================
+    function NudgeCard({ nudge }) {
+      const icons = {
+        stretch: (
+          <svg className="w-4 h-4 text-[var(--primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        ),
+        lunch: (
+          <svg className="w-4 h-4 text-[var(--primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+        ),
+        boundary: (
+          <svg className="w-4 h-4 text-[var(--primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+        )
+      };
+
+      return (
+        <div className="p-4 rounded-2xl border border-[var(--primary-border)] bg-[var(--primary-subtle)] flex items-start gap-3">
+          <div className="p-2 rounded-xl bg-[var(--bg-card)] shrink-0 shadow-sm">
+            {icons[nudge.type] || icons.stretch}
+          </div>
+          <div className="flex-1">
+            <h4 className="text-sm font-semibold text-[var(--text-primary)]">{nudge.title}</h4>
+            <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">{nudge.message}</p>
+          </div>
+        </div>
+      );
+    }
+
+    // =========================================================================
+    // REUSABLE COMPONENT: CheckInCard
+    // Prompts daily pulse or displays today's verified rating
+    // =========================================================================
+    function CheckInCard({ summary, onOpenModal }) {
+      const isCompleted = summary && summary.verified_stress_day !== undefined;
+      const todayStatus = summary ? summary.today_status : "Steady";
+      const meta = STATUS_META[todayStatus] || STATUS_META.Green;
+
+      return (
+        <div className="ws-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div
+              className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+              style={{ backgroundColor: "var(--primary-subtle)", color: "var(--primary)" }}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-semibold text-[var(--text-primary)]">Daily psychological check-in</h3>
+                {isCompleted && (
+                  <span className="ws-badge text-xs" style={{ backgroundColor: meta.bg, color: meta.color, borderColor: meta.border }}>
+                    {meta.icon}
+                    <span>{meta.word} ({summary.today_score}/5.0)</span>
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-[var(--text-secondary)] mt-0.5 leading-relaxed">
+                {isCompleted
+                  ? "Today's BAT-12 psychological rating has been verified and incorporated into model calibration."
+                  : "Under 45 seconds. Rate your cognitive clarity and energy to anchor your personal baseline."}
+              </p>
+            </div>
+          </div>
+
+          <button onClick={onOpenModal} className="ws-btn-primary shrink-0">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+            <span>{isCompleted ? "Update check-in" : "Start today's check-in"}</span>
+          </button>
+        </div>
+      );
+    }
+
+    // =========================================================================
+    // MAIN APPLICATION CONTAINER & SHELL
+    // =========================================================================
     function App() {
-      // Navigation & Role states
+      // Application Shell States
+      const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+      const [currentTheme, setCurrentTheme] = useState("light");
+      const [currentRoute, setCurrentRoute] = useState("dashboard"); // "dashboard", "checkin", "trends", "about"
+
+      // Role & Data States
       const [viewRole, setViewRole] = useState("employee"); // "employee" or "manager"
-      const [isDemoMode, setIsDemoMode] = useState(true);
+      const [isDemoMode, setIsDemoMode] = useState(true); // true = "Sample employees", false = "Live data"
       const [personas, setPersonas] = useState([]);
       const [selectedPersonaId, setSelectedPersonaId] = useState("EMP_089");
       const [employeeData, setEmployeeData] = useState(null);
       const [managerData, setManagerData] = useState(null);
       const [loading, setLoading] = useState(true);
+
+      // Modal State for BAT-12
       const [showBatModal, setShowBatModal] = useState(false);
       const [batResponses, setBatResponses] = useState({});
       const [submittingBat, setSubmittingBat] = useState(false);
       const [batSubmittedSuccess, setBatSubmittedSuccess] = useState(false);
 
+      // Handle Theme Toggle
+      const toggleTheme = () => {
+        const nextTheme = currentTheme === "light" ? "dark" : "light";
+        setCurrentTheme(nextTheme);
+        document.documentElement.setAttribute("data-theme", nextTheme);
+      };
+
       // Fetch Personas on Mount
       useEffect(() => {
         fetch("/api/demo/personas")
           .then(res => res.json())
-          .then(data => {
-            setPersonas(data);
-          })
+          .then(data => setPersonas(data))
           .catch(err => console.error("Error loading personas:", err));
       }, []);
 
-      // Fetch Employee Dashboard Data
+      // Fetch Employee Data
       const loadEmployeeData = (empId, mode) => {
         setLoading(true);
         const persona = personas.find(p => p.id === empId);
@@ -212,12 +746,12 @@
             setLoading(false);
           })
           .catch(err => {
-            console.error("Error loading employee data:", err);
+            console.error("Error loading employee telemetry:", err);
             setLoading(false);
           });
       };
 
-      // Fetch Manager Overview Data
+      // Fetch Manager Data
       const loadManagerData = () => {
         setLoading(true);
         fetch("/api/manager/overview")
@@ -232,6 +766,7 @@
           });
       };
 
+      // Synchronize data fetch when role/mode/persona changes
       useEffect(() => {
         if (viewRole === "employee") {
           loadEmployeeData(selectedPersonaId, isDemoMode ? "demo" : "live");
@@ -240,11 +775,11 @@
         }
       }, [viewRole, selectedPersonaId, isDemoMode]);
 
-      // Initialize BAT-12 form default values
+      // Initialize BAT-12 form default responses
       useEffect(() => {
         const initial = {};
         BAT12_QUESTIONS.forEach(q => {
-          initial[q.key] = 2; // Default Rarely
+          initial[q.key] = 2; // Default "Rarely"
         });
         setBatResponses(initial);
       }, [showBatModal]);
@@ -261,7 +796,7 @@
           })
         })
           .then(res => res.json())
-          .then(res => {
+          .then(() => {
             setSubmittingBat(false);
             setBatSubmittedSuccess(true);
             setTimeout(() => {
@@ -276,103 +811,315 @@
           });
       };
 
+      // Active Persona helper
+      const currentPersona = personas.find(p => p.id === selectedPersonaId) || {
+        name: "Priya Nair",
+        role: "Backend Engineer",
+        department: "Infrastructure"
+      };
+
+      // Navigation Route Items
+      const navItems = viewRole === "employee" ? [
+        {
+          id: "dashboard",
+          label: "Dashboard",
+          icon: (
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+          )
+        },
+        {
+          id: "checkin",
+          label: "Daily check-in",
+          icon: (
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+          )
+        },
+        {
+          id: "trends",
+          label: "Trends and telemetry",
+          icon: (
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          )
+        },
+        {
+          id: "about",
+          label: "About WorkSense",
+          icon: (
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          )
+        }
+      ] : [
+        {
+          id: "overview",
+          label: "Team overview",
+          icon: (
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+          )
+        },
+        {
+          id: "trends",
+          label: "30-day trajectory",
+          icon: (
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+            </svg>
+          )
+        },
+        {
+          id: "about",
+          label: "Privacy governance",
+          icon: (
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+          )
+        }
+      ];
+
       return (
-        <div className="min-h-screen flex flex-col bg-[#fafbfc]">
-          {/* Top Fluent Navigation Bar */}
-          <header className="sticky top-0 z-40 bg-white border-b border-gray-200 px-6 py-3.5 shadow-sm">
-            <div className="max-w-7xl mx-auto flex items-center justify-between">
-              {/* Brand Logo & Name */}
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#0078d4] flex items-center justify-center text-white font-bold text-xl shadow-md">
-                  W
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-xl tracking-tight text-black">WorkSense</span>
-                    <span className="text-[11px] font-semibold uppercase px-2 py-0.5 rounded-full bg-blue-50 text-[#0078d4] border border-blue-200">
-                      FLAME University
-                    </span>
+        <div className="min-h-screen flex flex-col bg-[var(--bg-app)] text-[var(--text-primary)]">
+          {/* Main App Layout: Sidebar + Content Area */}
+          <div className="flex-1 flex overflow-hidden">
+            {/* Left Collapsible Sidebar */}
+            <aside
+              className={`bg-[var(--bg-sidebar)] border-r border-[var(--border-subtle)] flex flex-col justify-between transition-all duration-200 z-20 shrink-0 ${
+                sidebarCollapsed ? "w-16" : "w-60"
+              }`}
+            >
+              <div>
+                {/* Brand Logo & Wordmark */}
+                <div className="h-14 flex items-center justify-between px-4 border-b border-[var(--border-subtle)]">
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    <div className="w-8 h-8 rounded-xl bg-[var(--primary)] flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">
+                      W
+                    </div>
+                    {!sidebarCollapsed && (
+                      <span className="font-semibold text-base tracking-tight text-[var(--text-primary)] truncate">
+                        WorkSense
+                      </span>
+                    )}
                   </div>
-                  <div className="text-xs text-gray-500 font-normal">Early-Warning Burnout Prevention Tool</div>
-                </div>
-              </div>
-
-              {/* Center Role Toggle (Employee Portal vs Manager Portal) */}
-              <div className="flex items-center bg-gray-100 p-1 rounded-full border border-gray-200">
-                <button
-                  onClick={() => setViewRole("employee")}
-                  className={`px-5 py-1.5 rounded-full text-sm font-semibold transition-all ${viewRole === "employee"
-                    ? "bg-[#0078d4] text-white shadow-sm"
-                    : "text-gray-700 hover:text-black"
-                    }`}
-                >
-                  Employee Portal
-                </button>
-                <button
-                  onClick={() => setViewRole("manager")}
-                  className={`px-5 py-1.5 rounded-full text-sm font-semibold transition-all ${viewRole === "manager"
-                    ? "bg-[#0078d4] text-white shadow-sm"
-                    : "text-gray-700 hover:text-black"
-                    }`}
-                >
-                  Manager / Employer Portal
-                </button>
-              </div>
-
-              {/* Right Controls: Mode Toggle & Persona Switcher */}
-              <div className="flex items-center gap-3">
-                {/* Live vs Demo Toggle */}
-                <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200 text-xs font-medium">
-                  <span className={isDemoMode ? "text-gray-400" : "text-green-700 font-semibold"}>● Live EDC</span>
                   <button
-                    onClick={() => setIsDemoMode(!isDemoMode)}
-                    className="w-8 h-4 bg-gray-300 rounded-full p-0.5 transition-colors relative flex items-center"
-                    style={{ backgroundColor: isDemoMode ? "#0078d4" : "#107c41" }}
+                    onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                    className="p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card-subtle)] transition-colors"
+                    title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
                   >
-                    <div
-                      className={`w-3 h-3 bg-white rounded-full shadow-md transform transition-transform ${isDemoMode ? "translate-x-4" : "translate-x-0"
-                        }`}
-                    />
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      {sidebarCollapsed ? (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                      ) : (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                      )}
+                    </svg>
                   </button>
-                  <span className={isDemoMode ? "text-[#0078d4] font-semibold" : "text-gray-400"}>Demo Profiles</span>
                 </div>
 
-                {/* Persona Switcher Dropdown (in Employee Demo Mode) */}
-                {viewRole === "employee" && isDemoMode && personas.length > 0 && (
-                  <select
-                    value={selectedPersonaId}
-                    onChange={(e) => setSelectedPersonaId(e.target.value)}
-                    className="text-xs font-semibold bg-white border border-gray-300 rounded-xl px-3 py-2 text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0078d4]"
-                  >
-                    {personas.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.title}
-                      </option>
-                    ))}
-                  </select>
-                )}
+                {/* Navigation Links */}
+                <nav className="p-2 space-y-1 mt-2">
+                  {navItems.map((item) => {
+                    const isActive = currentRoute === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => setCurrentRoute(item.id)}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                          isActive
+                            ? "bg-[var(--primary-subtle)] text-[var(--primary)] font-semibold shadow-xs"
+                            : "text-[var(--text-secondary)] hover:bg-[var(--bg-card-subtle)] hover:text-[var(--text-primary)]"
+                        }`}
+                        title={sidebarCollapsed ? item.label : undefined}
+                      >
+                        {item.icon}
+                        {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
+                      </button>
+                    );
+                  })}
+                </nav>
+              </div>
+
+              {/* Sidebar Footer: Theme Toggle & User Capsule */}
+              <div className="p-3 border-t border-[var(--border-subtle)] space-y-2">
+                <button
+                  onClick={toggleTheme}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-card-subtle)] transition-colors"
+                  title="Toggle light and dark theme"
+                >
+                  {currentTheme === "light" ? (
+                    <svg className="w-4 h-4 shrink-0 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4 shrink-0 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                  )}
+                  {!sidebarCollapsed && <span>{currentTheme === "light" ? "Dark mode" : "Light mode"}</span>}
+                </button>
+              </div>
+            </aside>
+
+            {/* Right Main Column (Slim Top Bar + Content Area) */}
+            <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+              {/* Slim Top Bar */}
+              <header className="h-14 bg-[var(--bg-sidebar)] border-b border-[var(--border-subtle)] px-6 flex items-center justify-between sticky top-0 z-10 shrink-0">
+                <div className="flex items-center gap-3">
+                  <h1 className="text-base font-semibold text-[var(--text-primary)]">
+                    {navItems.find(n => n.id === currentRoute)?.label || "Dashboard"}
+                  </h1>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--bg-card-subtle)] text-[var(--text-secondary)] font-medium">
+                    {viewRole === "employee" ? "Employee portal" : "Manager portal"}
+                  </span>
+                </div>
+
+                {/* Right Top Bar Section: Avatar & Status */}
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2.5 text-xs">
+                    <div className="text-right hidden sm:block">
+                      <div className="font-semibold text-[var(--text-primary)] leading-tight">
+                        {viewRole === "employee" ? currentPersona.name : "Engineering Director"}
+                      </div>
+                      <div className="text-[11px] text-[var(--text-muted)]">
+                        {viewRole === "employee" ? currentPersona.role : "People Analytics"}
+                      </div>
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-[var(--primary)] text-white font-semibold flex items-center justify-center text-xs shadow-xs">
+                      {viewRole === "employee" ? currentPersona.name.split(" ").map(n => n[0]).join("") : "ED"}
+                    </div>
+                  </div>
+                </div>
+              </header>
+
+              {/* Main Scrollable Content Container (Max-Width: 960px for Employee) */}
+              <main className="flex-1 p-6 md:p-8 pb-28">
+                <div className={`mx-auto ${viewRole === "employee" ? "max-w-[960px]" : "max-w-[1080px]"}`}>
+                  {loading ? (
+                    <div className="space-y-6">
+                      <div className="h-24 ws-skeleton rounded-2xl" />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Skeleton type="card" />
+                        <Skeleton type="card" />
+                      </div>
+                    </div>
+                  ) : viewRole === "employee" ? (
+                    <EmployeePortalContent
+                      currentRoute={currentRoute}
+                      setCurrentRoute={setCurrentRoute}
+                      data={employeeData}
+                      onOpenBatModal={() => setShowBatModal(true)}
+                    />
+                  ) : (
+                    <ManagerPortalContent
+                      currentRoute={currentRoute}
+                      setCurrentRoute={setCurrentRoute}
+                      data={managerData}
+                    />
+                  )}
+                </div>
+              </main>
+
+              {/* App Footer */}
+              <footer className="border-t border-[var(--border-subtle)] bg-[var(--bg-card)] py-3 px-6 text-center text-xs text-[var(--text-muted)] mb-14">
+                WorkSense &mdash; Built as an interdisciplinary student research project at FLAME University, Pune.
+                <span className="ml-2 font-medium text-[var(--text-secondary)]">Strict Zero-Identification Standard.</span>
+              </footer>
+            </div>
+          </div>
+
+          {/* DOCKED BOTTOM "DEMO CONTROLS" BAR */}
+          <div className="fixed bottom-0 left-0 right-0 z-30 h-13 bg-[var(--bg-sidebar)] border-t border-[var(--border-strong)] px-4 sm:px-6 py-2 flex items-center justify-between shadow-[var(--shadow-dock)] text-xs">
+            {/* Left: Demo Controls Badge */}
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-[var(--text-muted)] uppercase tracking-wider text-[10px]">
+                Demo controls
+              </span>
+            </div>
+
+            {/* Center: Live data vs Sample employees & Portal Switcher */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Role Toggle: Employee | Manager */}
+              <div className="flex items-center bg-[var(--bg-card-subtle)] p-0.5 rounded-full border border-[var(--border-subtle)]">
+                <button
+                  onClick={() => {
+                    setViewRole("employee");
+                    setCurrentRoute("dashboard");
+                  }}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                    viewRole === "employee"
+                      ? "bg-[var(--primary)] text-white shadow-xs"
+                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  }`}
+                >
+                  Employee
+                </button>
+                <button
+                  onClick={() => {
+                    setViewRole("manager");
+                    setCurrentRoute("overview");
+                  }}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                    viewRole === "manager"
+                      ? "bg-[var(--primary)] text-white shadow-xs"
+                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  }`}
+                >
+                  Manager
+                </button>
+              </div>
+
+              {/* Data Mode Switch: Live data | Sample employees */}
+              <div className="flex items-center bg-[var(--bg-card-subtle)] p-0.5 rounded-full border border-[var(--border-subtle)]">
+                <button
+                  onClick={() => setIsDemoMode(false)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                    !isDemoMode
+                      ? "bg-[var(--status-steady)] text-white font-semibold shadow-xs"
+                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  }`}
+                >
+                  Live data
+                </button>
+                <button
+                  onClick={() => setIsDemoMode(true)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                    isDemoMode
+                      ? "bg-[var(--primary)] text-white font-semibold shadow-xs"
+                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  }`}
+                >
+                  Sample employees
+                </button>
               </div>
             </div>
-          </header>
 
-          {/* Main Dashboard Workspace */}
-          <main className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-8">
-            {loading ? (
-              <div className="flex flex-col items-center justify-center py-24 text-gray-500">
-                <div className="w-10 h-10 border-4 border-[#0078d4] border-t-transparent rounded-full animate-spin mb-4"></div>
-                <div className="text-sm font-medium">Connecting to WorkSense Neural Engine...</div>
-              </div>
-            ) : viewRole === "employee" ? (
-              <EmployeePortalView
-                data={employeeData}
-                onOpenBatModal={() => setShowBatModal(true)}
-              />
-            ) : (
-              <ManagerPortalView data={managerData} />
-            )}
-          </main>
+            {/* Right: Persona Dropdown (when Sample employees is active) */}
+            <div className="flex items-center gap-2">
+              {viewRole === "employee" && isDemoMode && personas.length > 0 && (
+                <select
+                  value={selectedPersonaId}
+                  onChange={(e) => setSelectedPersonaId(e.target.value)}
+                  className="text-xs font-medium bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-lg px-2.5 py-1 text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                >
+                  {personas.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.title}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          </div>
 
-          {/* BAT-12 Daily Survey Modal */}
+          {/* BAT-12 Survey Modal */}
           {showBatModal && (
             <BAT12SurveyModal
               responses={batResponses}
@@ -383,21 +1130,15 @@
               success={batSubmittedSuccess}
             />
           )}
-
-          {/* Footer Privacy Guarantee */}
-          <footer className="border-t border-gray-200 bg-white py-4 px-6 text-center text-xs text-gray-500">
-            WorkSense — Built as an interdisciplinary research project at FLAME University, Pune.
-            <span className="ml-2 font-medium text-gray-700">Strict Zero-Identification Privacy Standard (No keystroke logging, no window titles, no text content).</span>
-          </footer>
         </div>
       );
     }
 
     // =========================================================================
-    // 1. EMPLOYEE PORTAL VIEW
+    // EMPLOYEE PORTAL ROUTING CONTENT
     // =========================================================================
-    function EmployeePortalView({ data, onOpenBatModal }) {
-      if (!data) return null;
+    function EmployeePortalContent({ currentRoute, setCurrentRoute, data, onOpenBatModal }) {
+      if (!data) return <EmptyState title="No telemetry data" description="Unable to load employee metrics." />;
 
       const {
         name,
@@ -416,267 +1157,280 @@
         bat12_summary,
       } = data;
 
-      const isCalibrated = calibration_progress.is_calibrated;
+      const isCalibrated = calibration_progress ? calibration_progress.is_calibrated : true;
 
-      // Status Colors
-      const statusMeta = {
-        Green: { bg: "#e6f4ea", text: "#137333", border: "#ceead6", label: "Healthy Rhythm" },
-        Yellow: { bg: "#fef7e0", text: "#b06000", border: "#feefc3", label: "Mild Strain (Caution)" },
-        Orange: { bg: "#feefe3", text: "#c53929", border: "#fad2cf", label: "Elevated Risk (Early Warning)" },
-        Red: { bg: "#fce8e6", text: "#c5221f", border: "#f5c2cb", label: "Acute Burnout Risk" },
-        INSUFFICIENT_DATA: { bg: "#e8f0fe", text: "#1967d2", border: "#d2e3fc", label: "Calibrating Personal Baseline" }
-      }[predicted_status_5d] || { bg: "#f1f3f4", text: "#5f6368", border: "#dadce0", label: "Calibrating" };
+      // ROUTE: About Page
+      if (currentRoute === "about") {
+        return (
+          <div className="space-y-6">
+            <div className="ws-card p-6">
+              <span className="text-xs font-medium text-[var(--primary)] uppercase tracking-wider">
+                Research Prototype
+              </span>
+              <h2 className="text-2xl font-bold text-[var(--text-primary)] mt-1 mb-3">About WorkSense</h2>
+              <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-4">
+                WorkSense is an employer-funded early-warning tool built as an interdisciplinary student research project at FLAME University, Pune, designed specifically for Indian working professionals.
+              </p>
+              <div className="p-4 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] leading-relaxed space-y-2">
+                <div>
+                  <strong className="text-[var(--text-primary)]">WHO Burnout Framework:</strong> Burnout is defined in line with the World Health Organization as an occupational phenomenon resulting from chronic workplace stress that has not been successfully managed.
+                </div>
+                <div>
+                  <strong className="text-[var(--text-primary)]">Validated BAT-12 Instrument:</strong> Daily self-report check-ins are grounded in the Burnout Assessment Tool (BAT-12) by Prof. Wilmar Schaufeli et al., covering Exhaustion, Mental distance, Emotional impairment, and Cognitive impairment.
+                </div>
+                <div>
+                  <strong className="text-[var(--text-primary)]">Strict Zero-Identification Standard:</strong> No keystrokes are recorded, no window titles are inspected, and no chat or email content is ever captured. Only timing intervals and aggregate rhythm counts are analyzed.
+                </div>
+              </div>
+            </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div className="ws-card p-5">
+                <h3 className="font-semibold text-sm text-[var(--text-primary)] mb-2">How the ML model works</h3>
+                <p className="text-[var(--text-secondary)] leading-relaxed">
+                  During your initial 14 days, WorkSense builds a personal behavioral baseline (Gross WPM, key dwell time, session stretch length, meal breaks). A temporal Bidirectional GRU model flags significant deviations 5+ working days ahead of acute burnout.
+                </p>
+              </div>
+              <div className="ws-card p-5">
+                <h3 className="font-semibold text-sm text-[var(--text-primary)] mb-2">Privacy and manager reports</h3>
+                <p className="text-[var(--text-secondary)] leading-relaxed">
+                  Managers never see your individual telemetry, recovery nudges, or raw scores. Team reports are strictly aggregated across whole departments to protect your individual psychological safety.
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // ROUTE: Daily Check-in Page
+      if (currentRoute === "checkin") {
+        return (
+          <div className="space-y-6">
+            <CheckInCard summary={bat12_summary} onOpenModal={onOpenBatModal} />
+            <div className="ws-card p-6">
+              <h3 className="text-base font-semibold text-[var(--text-primary)] mb-2">Psychological pulse history</h3>
+              <p className="text-xs text-[var(--text-secondary)] mb-4">
+                Recent daily BAT-12 check-in scores anchoring your personal baseline.
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                <div className="p-3 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)]">
+                  <div className="text-xs text-[var(--text-muted)]">Exhaustion</div>
+                  <div className="text-lg font-bold text-[var(--text-primary)] mt-1">{bat12_summary.today_exhaustion || "2.0"}</div>
+                </div>
+                <div className="p-3 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)]">
+                  <div className="text-xs text-[var(--text-muted)]">Cognitive</div>
+                  <div className="text-lg font-bold text-[var(--text-primary)] mt-1">{bat12_summary.today_cognitive || "2.0"}</div>
+                </div>
+                <div className="p-3 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)]">
+                  <div className="text-xs text-[var(--text-muted)]">Today score</div>
+                  <div className="text-lg font-bold text-[var(--primary)] mt-1">{bat12_summary.today_score || "1.8"}</div>
+                </div>
+                <div className="p-3 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)]">
+                  <div className="text-xs text-[var(--text-muted)]">Baseline mean</div>
+                  <div className="text-lg font-bold text-[var(--status-steady)] mt-1">{bat12_summary.baseline_bat_score || "1.4"}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // ROUTE: Trends & Telemetry
+      if (currentRoute === "trends") {
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <MetricChart
+                title="Continuous work blocks"
+                subtitle="Minutes before taking an active rest pause"
+                items={recent_7d_telemetry}
+                dataKey="stretch_mins"
+                unit="mins"
+                maxReference={180}
+              />
+              <MetricChart
+                title="After-hours messages"
+                subtitle="Communication events sent outside work shift"
+                items={recent_7d_telemetry}
+                dataKey="after_hours_msgs"
+                unit="msgs"
+                maxReference={30}
+              />
+            </div>
+
+            {/* Full 7-Day Table */}
+            <div className="ws-card p-6 overflow-x-auto">
+              <h3 className="text-base font-semibold text-[var(--text-primary)] mb-3">7-day behavioral observations</h3>
+              <table className="w-full text-left text-xs text-[var(--text-secondary)]">
+                <thead className="bg-[var(--bg-card-subtle)] text-[var(--text-muted)] text-[11px] font-semibold border-b border-[var(--border-subtle)]">
+                  <tr>
+                    <th className="py-2.5 px-3">Date</th>
+                    <th className="py-2.5 px-3">Continuous stretch</th>
+                    <th className="py-2.5 px-3">Lunch duration</th>
+                    <th className="py-2.5 px-3">After-hours msgs</th>
+                    <th className="py-2.5 px-3">Typing speed</th>
+                    <th className="py-2.5 px-3">Error ratio</th>
+                    <th className="py-2.5 px-3">BAT-12 score</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border-subtle)]">
+                  {recent_7d_telemetry.map((r, i) => (
+                    <tr key={i} className="hover:bg-[var(--bg-card-hover)]">
+                      <td className="py-2 px-3 font-semibold text-[var(--text-primary)]">
+                        {r.date} ({r.day_name})
+                      </td>
+                      <td className="py-2 px-3">{r.stretch_mins} mins</td>
+                      <td className="py-2 px-3">{r.lunch_mins} mins</td>
+                      <td className="py-2 px-3 font-medium">
+                        <span className={r.after_hours_msgs > 10 ? "text-[var(--status-strained)] font-semibold" : ""}>
+                          {r.after_hours_msgs} msgs
+                        </span>
+                      </td>
+                      <td className="py-2 px-3">{r.wpm} WPM</td>
+                      <td className="py-2 px-3">{r.backspace_ratio}%</td>
+                      <td className="py-2 px-3 font-semibold text-[var(--text-primary)]">
+                        {r.bat_score} ({r.bat_status})
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      }
+
+      // DEFAULT ROUTE: Dashboard
       return (
         <div className="space-y-6">
-          {/* Employee Hero Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 ws-card">
+          {/* Employee Hero Capsule */}
+          <div className="ws-card p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <div className="flex items-center gap-3">
-                <h2>{name}</h2>
-                <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-700">
-                  {role} • {department}
+              <div className="flex items-center gap-2.5">
+                <h2 className="text-xl font-bold text-[var(--text-primary)]">{name}</h2>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--bg-card-subtle)] text-[var(--text-secondary)] font-medium">
+                  {role} &bull; {department}
                 </span>
               </div>
-              <p className="text-gray-500 text-sm mt-1">
-                Workspace Date: <span className="font-semibold text-gray-800">{current_date}</span>
-                {data.mode === "live" && <span className="ml-2 text-green-600 font-semibold">• Live Machine Telemetry</span>}
+              <p className="text-xs text-[var(--text-muted)] mt-1">
+                Workspace date: <span className="font-semibold text-[var(--text-secondary)]">{current_date}</span>
+                {data.mode === "live" && <span className="ml-2 text-[var(--status-steady)] font-semibold">&bull; Live machine telemetry</span>}
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
-              <button onClick={onOpenBatModal} className="ws-btn-primary">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                </svg>
-                Complete Today's BAT-12 Survey
-              </button>
-            </div>
+            <button onClick={onOpenBatModal} className="ws-btn-primary shrink-0">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span>Today's check-in</span>
+            </button>
           </div>
 
-          {/* Calibration Alert (if Days < 14) */}
-          {!isCalibrated ? (
-            <div className="p-6 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 ws-card">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          {/* 14-Day Baseline Calibration Gauge (if not calibrated) */}
+          {!isCalibrated && calibration_progress && (
+            <div className="ws-card p-5 border-l-4" style={{ borderLeftColor: "var(--status-calibrating)" }}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <div className="flex items-center gap-2 text-[#0078d4] font-semibold text-sm uppercase tracking-wider">
-                    <span>⏳ 14-Day Baseline Calibration in Progress</span>
+                  <div className="flex items-center gap-2 text-xs font-semibold text-[var(--status-calibrating)]">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>14-day personal baseline calibration in progress</span>
                   </div>
-                  <h3 className="mt-1 text-gray-900">
-                    Day {calibration_progress.days_collected} of {calibration_progress.days_required} Completed
+                  <h3 className="text-base font-semibold text-[var(--text-primary)] mt-1">
+                    Day {calibration_progress.days_collected} of {calibration_progress.days_required} completed
                   </h3>
-                  <p className="text-sm text-gray-600 mt-1 max-w-2xl">
-                    WorkSense is establishing your personal work baseline (typing pace, session stretches, lunch habits).
-                    No burnout alerts or manager reports are generated during this initial 14-day calibration window.
+                  <p className="text-xs text-[var(--text-secondary)] mt-0.5 max-w-xl leading-relaxed">
+                    WorkSense is learning your healthy working rhythms. No burnout alerts or manager reports are generated during calibration.
                   </p>
                 </div>
-                <div className="text-right flex flex-col items-end">
-                  <div className="text-2xl font-bold text-[#0078d4]">{calibration_progress.progress_pct}%</div>
-                  <div className="w-36 h-2.5 bg-blue-200 rounded-full overflow-hidden mt-1">
+                <div className="text-right shrink-0">
+                  <div className="text-xl font-bold text-[var(--status-calibrating)]">{calibration_progress.progress_pct}%</div>
+                  <div className="w-32 h-2 bg-[var(--bg-card-subtle)] rounded-full overflow-hidden mt-1">
                     <div
-                      className="h-full bg-[#0078d4] rounded-full transition-all duration-500"
-                      style={{ width: `${calibration_progress.progress_pct}%` }}
-                    ></div>
+                      className="h-full rounded-full transition-all"
+                      style={{ width: `${calibration_progress.progress_pct}%`, backgroundColor: "var(--status-calibrating)" }}
+                    />
                   </div>
-                  <span className="text-xs text-gray-500 mt-1">
-                    BAT-12 Surveys: {calibration_progress.bat12_completed}/{calibration_progress.days_collected}
-                  </span>
                 </div>
               </div>
             </div>
-          ) : null}
+          )}
 
-          {/* Core Telemetry Grid: Early-Warning Status & Recovery Nudges */}
+          {/* Today's Psychological Check-in Card */}
+          <CheckInCard summary={bat12_summary} onOpenModal={onOpenBatModal} />
+
+          {/* Core Telemetry Grid: StatusCard & Nudges */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Status Card (5-Day Forward Prediction) */}
-            <div className="lg:col-span-2 p-6 rounded-2xl bg-white border border-gray-200 ws-card flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                      5-Day Forward Burnout Forecast
-                    </span>
-                    <h3 className="text-gray-900 mt-0.5">Impending Trajectory Status</h3>
-                  </div>
-                  <div
-                    className="px-4 py-1.5 rounded-full text-sm font-semibold border"
-                    style={{ backgroundColor: statusMeta.bg, color: statusMeta.text, borderColor: statusMeta.border }}
-                  >
-                    {statusMeta.label}
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-xl mb-4" style={{ backgroundColor: statusMeta.bg }}>
-                  <div className="text-sm font-medium" style={{ color: statusMeta.text }}>
-                    {status_description}
-                  </div>
-                  {isCalibrated && (
-                    <div className="mt-3 flex items-center gap-6 text-xs text-gray-700">
-                      <div>
-                        Model Confidence: <span className="font-semibold">{(confidence * 100).toFixed(1)}%</span>
-                      </div>
-                      <div>
-                        Continuous Risk Index: <span className="font-semibold">{risk_score ? (risk_score * 10).toFixed(1) : 0}/10</span>
-                      </div>
-                      <div>
-                        Forecast Horizon: <span className="font-semibold">5+ Working Days</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Primary Category Drivers (Privacy Preserved) */}
-                {primary_drivers && primary_drivers.length > 0 && (
-                  <div>
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
-                      Primary Behavioral Contributors
-                    </h4>
-                    <div className="space-y-2">
-                      {primary_drivers.map((d, i) => (
-                        <div key={i} className="flex items-center justify-between text-xs bg-gray-50 px-3 py-2 rounded-lg border border-gray-100">
-                          <span className="font-medium text-gray-800">{d.label}</span>
-                          <span className="font-bold text-[#0078d4]">{d.attribution_pct}%</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Personal Baseline Verification Strip */}
-              <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-                <div>
-                  Personal Calibration Baseline: <span className="font-semibold text-gray-800">{bat12_summary.baseline_bat_status}</span> (BAT Mean: {bat12_summary.baseline_bat_score || "1.42"})
-                </div>
-                <div>
-                  Today's Psychological Rating: <span className="font-semibold text-gray-800">{bat12_summary.today_status}</span> ({bat12_summary.today_score}/5.0)
-                </div>
-              </div>
+            <div className="lg:col-span-2">
+              <StatusCard
+                statusKey={predicted_status_5d}
+                description={status_description}
+                confidence={confidence}
+                riskScore={risk_score}
+                primaryDrivers={primary_drivers}
+                baselineStatus={bat12_summary.baseline_bat_status}
+                baselineScore={bat12_summary.baseline_bat_score}
+                todayStatus={bat12_summary.today_status}
+                todayScore={bat12_summary.today_score}
+                isCalibrated={isCalibrated}
+                onOpenCheckIn={onOpenBatModal}
+              />
             </div>
 
             {/* Smart Recovery Nudges */}
-            <div className="p-6 rounded-2xl bg-white border border-gray-200 ws-card flex flex-col justify-between">
+            <div className="ws-card p-6 flex flex-col justify-between">
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-gray-900">Recovery Nudges</h3>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-[#0078d4] font-semibold">
-                    Personalized
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-base font-semibold text-[var(--text-primary)]">Recovery nudges</h3>
+                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[var(--primary-subtle)] text-[var(--primary)]">
+                    Private
                   </span>
                 </div>
                 <div className="space-y-3">
-                  {recovery_nudges.map((nudge, idx) => (
-                    <div key={idx} className="p-3.5 rounded-xl border border-blue-100 bg-blue-50/50">
-                      <div className="font-semibold text-sm text-[#0078d4] flex items-center gap-2">
-                        <span>●</span> {nudge.title}
-                      </div>
-                      <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                        {nudge.message}
-                      </p>
-                    </div>
+                  {recovery_nudges && recovery_nudges.map((nudge, idx) => (
+                    <NudgeCard key={idx} nudge={nudge} />
                   ))}
                 </div>
               </div>
-
-              <div className="mt-4 pt-3 border-t border-gray-100 text-[11px] text-gray-400">
-                Nudges are private to you. No manager has access to your breaks or reminders.
-              </div>
+              <p className="text-[11px] text-[var(--text-muted)] mt-4 pt-3 border-t border-[var(--border-subtle)]">
+                Nudges are private to you. No manager or employer has access to your breaks or reminders.
+              </p>
             </div>
           </div>
 
-          {/* Relative Deviations from Personal Baseline (Z-Score Grid) */}
-          <div className="p-6 rounded-2xl bg-white border border-gray-200 ws-card">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  Individual Deviation Scores (MAD Robust Z-Score)
-                </span>
-                <h3 className="text-gray-900 mt-0.5">Today vs. Your Personal 14-Day Baseline</h3>
-              </div>
-              <span className="text-xs text-gray-500">
-                Zero = Your Normal | Positive = Increase | Negative = Decrease
-              </span>
+          {/* Individual Relative Deviations Grid */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-semibold text-[var(--text-primary)]">
+                Relative deviations from personal baseline
+              </h3>
+              <span className="text-xs text-[var(--text-muted)]">Zero = your normal</span>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-              {[
-                { label: "Longest Stretch", val: relative_deviations.work_stretch, unit: "MAD", hint: "Continuous work block" },
-                { label: "After-Hours Work", val: relative_deviations.after_hours, unit: "MAD", hint: "Night active minutes" },
-                { label: "Lunch Break", val: relative_deviations.lunch_break, unit: "MAD", hint: "Midday recovery" },
-                { label: "Typing Pace", val: relative_deviations.typing_speed, unit: "MAD", hint: "Gross typing speed" },
-                { label: "Correction Errors", val: relative_deviations.error_rate, unit: "MAD", hint: "Backspaces & deletes" },
-                { label: "Focus Rhythm", val: relative_deviations.focus_fragmentation, unit: "MAD", hint: "Fragmentation ratio" },
-              ].map((item, i) => {
-                const isSpike = item.val > 2.0;
-                const isDrop = item.val < -2.0;
-                const color = isSpike || isDrop ? "#c53929" : "#137333";
-                return (
-                  <div key={i} className="p-3.5 rounded-xl border border-gray-200 bg-gray-50/70 text-center">
-                    <div className="text-xs text-gray-500 truncate">{item.label}</div>
-                    <div className="text-lg font-bold my-1" style={{ color }}>
-                      {item.val > 0 ? `+${item.val}` : item.val}
-                    </div>
-                    <div className="text-[10px] text-gray-400 truncate">{item.hint}</div>
-                  </div>
-                );
-              })}
+              <DeviationBar label="Longest stretch" value={relative_deviations.work_stretch} unit="MAD" hint="Continuous block" />
+              <DeviationBar label="After-hours work" value={relative_deviations.after_hours} unit="MAD" hint="Late messages" />
+              <DeviationBar label="Lunch duration" value={relative_deviations.lunch_break} unit="MAD" hint="Midday recovery" />
+              <DeviationBar label="Typing pace" value={relative_deviations.typing_speed} unit="MAD" hint="Gross speed WPM" />
+              <DeviationBar label="Correction errors" value={relative_deviations.error_rate} unit="MAD" hint="Backspaces/deletes" />
+              <DeviationBar label="Focus rhythm" value={relative_deviations.focus_fragmentation} unit="MAD" hint="Task fragmentation" />
             </div>
-          </div>
-
-          {/* Recent 7-Day Telemetry & Survey Trend */}
-          <div className="p-6 rounded-2xl bg-white border border-gray-200 ws-card overflow-x-auto">
-            <h3 className="text-gray-900 mb-4">Recent 7-Day Behavioral Observations</h3>
-            <table className="w-full text-left text-xs text-gray-600">
-              <thead className="bg-gray-50 text-gray-500 uppercase text-[10px] font-semibold border-b">
-                <tr>
-                  <th className="py-2.5 px-3">Date</th>
-                  <th className="py-2.5 px-3">Continuous Stretch</th>
-                  <th className="py-2.5 px-3">Lunch Duration</th>
-                  <th className="py-2.5 px-3">After-Hours Msgs</th>
-                  <th className="py-2.5 px-3">Typing Speed</th>
-                  <th className="py-2.5 px-3">Error Ratio</th>
-                  <th className="py-2.5 px-3">BAT-12 Score</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {recent_7d_telemetry.map((r, i) => (
-                  <tr key={i} className="hover:bg-gray-50/50">
-                    <td className="py-2 px-3 font-semibold text-gray-800">
-                      {r.date} ({r.day_name})
-                    </td>
-                    <td className="py-2 px-3">{r.stretch_mins} mins</td>
-                    <td className="py-2 px-3">{r.lunch_mins} mins</td>
-                    <td className="py-2 px-3 font-medium">
-                      <span className={r.after_hours_msgs > 5 ? "text-red-600 font-bold" : "text-gray-700"}>
-                        {r.after_hours_msgs} msgs
-                      </span>
-                    </td>
-                    <td className="py-2 px-3">{r.wpm} WPM</td>
-                    <td className="py-2 px-3">{r.backspace_ratio}%</td>
-                    <td className="py-2 px-3">
-                      <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-gray-100 text-gray-800">
-                        {r.bat_score} ({r.bat_status})
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         </div>
       );
     }
 
     // =========================================================================
-    // 2. MANAGER / EMPLOYER PORTAL VIEW (PRIVACY-PRESERVED)
+    // MANAGER PORTAL ROUTING CONTENT (PRIVACY-PRESERVED)
     // =========================================================================
-    function ManagerPortalView({ data }) {
-      if (!data) return null;
+    function ManagerPortalContent({ currentRoute, setCurrentRoute, data }) {
+      if (!data) return <EmptyState title="No manager telemetry" description="Unable to load team statistics." />;
 
       const {
         department,
         reporting_period,
         total_workforce,
-        active_monitored,
         status_distribution_pct,
         status_distribution_counts,
         trajectory_30d,
@@ -684,21 +1438,109 @@
         privacy_compliance,
       } = data;
 
+      // ROUTE: Privacy Governance
+      if (currentRoute === "about") {
+        return (
+          <div className="space-y-6">
+            <div className="ws-card p-6">
+              <span className="text-xs font-semibold text-[var(--status-steady)] uppercase tracking-wider">
+                Ethical AI & Compliance Standard
+              </span>
+              <h2 className="text-2xl font-bold text-[var(--text-primary)] mt-1 mb-3">Privacy governance framework</h2>
+              <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-4">
+                WorkSense implements the Zero-Identification Protocol. Managers only receive aggregated department-level metrics to safeguard individual psychological safety.
+              </p>
+              <div className="p-4 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] space-y-2">
+                <div>&bull; <strong className="text-[var(--text-primary)]">No individual ranking:</strong> Team members are never ranked against each other.</div>
+                <div>&bull; <strong className="text-[var(--text-primary)]">No raw telemetry access:</strong> Individual keystroke logs, active application titles, and screen captures are strictly prohibited by architecture.</div>
+                <div>&bull; <strong className="text-[var(--text-primary)]">Early-warning purpose:</strong> Data serves exclusively to identify organizational workload imbalance 5+ days before acute exhaustion occurs.</div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // ROUTE: 30-Day Trajectory
+      if (currentRoute === "trends") {
+        return (
+          <div className="space-y-6">
+            <div className="ws-card p-6">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="text-base font-semibold text-[var(--text-primary)]">30-day department burnout trajectory</h3>
+                  <p className="text-xs text-[var(--text-secondary)] mt-0.5">Rolling percentage of team at elevated risk</p>
+                </div>
+                <span className="text-xs px-2 py-0.5 rounded-md bg-[var(--bg-card-subtle)] text-[var(--text-secondary)] font-medium">
+                  Aggregated telemetry
+                </span>
+              </div>
+
+              <div className="h-52 flex items-end gap-1.5 pt-4 pb-1 border-b border-[var(--border-subtle)]">
+                {trajectory_30d.map((pt, i) => {
+                  const h = Math.max(10, (pt.pct_elevated_risk / 35.0) * 180);
+                  const isHigh = pt.pct_elevated_risk > 20;
+                  return (
+                    <div key={i} className="flex-1 flex flex-col items-center group relative">
+                      <div
+                        className="w-full rounded-t transition-all hover:opacity-85"
+                        style={{ height: `${h}px`, backgroundColor: isHigh ? "var(--status-strained)" : "var(--primary)" }}
+                      />
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full mb-1 text-[11px] bg-[var(--text-primary)] text-[var(--bg-card)] px-2 py-1 rounded shadow-lg whitespace-nowrap z-20 pointer-events-none">
+                        {pt.date}: {pt.pct_elevated_risk}%
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex justify-between text-xs text-[var(--text-muted)] mt-2">
+                <span>30 days ago</span>
+                <span>15 days ago</span>
+                <span>Today</span>
+              </div>
+            </div>
+
+            {/* Category Attribution Breakdown */}
+            <div className="ws-card p-6">
+              <h3 className="text-base font-semibold text-[var(--text-primary)] mb-4">Primary drivers across department</h3>
+              <div className="space-y-4">
+                {category_drivers.map((cat, i) => (
+                  <div key={i}>
+                    <div className="flex justify-between text-xs font-medium text-[var(--text-primary)] mb-1">
+                      <span>{cat.category}</span>
+                      <span className="font-bold text-[var(--primary)]">{cat.attribution_pct}%</span>
+                    </div>
+                    <div className="w-full h-2 bg-[var(--bg-card-subtle)] rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: `${cat.attribution_pct * 2}%`, backgroundColor: "var(--primary)" }}
+                      />
+                    </div>
+                    <div className="text-[11px] text-[var(--text-muted)] mt-1">{cat.description}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // DEFAULT ROUTE: Overview
       return (
         <div className="space-y-6">
-          {/* Manager Header */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-200 ws-card flex flex-col md:flex-row md:items-center justify-between gap-4">
+          {/* Executive Header */}
+          <div className="ws-card p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-blue-700">
-                <span>🛡️ Executive Leadership & People Analytics</span>
-              </div>
-              <h2 className="mt-1">{department}</h2>
-              <p className="text-gray-500 text-sm mt-0.5">
-                Reporting Window: {reporting_period} • {total_workforce} Active Knowledge Workers
+              <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
+                People analytics & organizational rhythm
+              </span>
+              <h2 className="text-xl font-bold text-[var(--text-primary)] mt-0.5">{department}</h2>
+              <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                Reporting window: {reporting_period} &bull; {total_workforce} active knowledge workers
               </p>
             </div>
-            <div className="text-xs bg-green-50 border border-green-200 text-green-800 p-3 rounded-xl max-w-sm">
-              <span className="font-bold">Zero-Identification Active:</span> Raw keystrokes, individual names, and employee rankings are strictly redacted in accordance with the WHO Burnout Framework.
+            <div className="p-3 rounded-xl border border-[var(--status-steady-border)] bg-[var(--status-steady-bg)] text-xs text-[var(--status-steady)] max-w-sm">
+              <strong className="block font-semibold">Zero-Identification protocol active:</strong>
+              Individual names, rankings, and raw activity logs are strictly redacted.
             </div>
           </div>
 
@@ -706,107 +1548,105 @@
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               {
-                label: "Healthy Rhythms",
-                color: "#137333",
-                bg: "#e6f4ea",
-                border: "#ceead6",
+                key: "Green",
+                word: "Steady",
+                color: "var(--status-steady)",
+                bg: "var(--status-steady-bg)",
+                border: "var(--status-steady-border)",
+                icon: STATUS_META.Green.icon,
                 pct: status_distribution_pct.Green,
                 count: status_distribution_counts.Green,
-                desc: "Working within calibrated personal baselines"
+                desc: "Within personal baseline rhythms"
               },
               {
-                label: "Mild Strain (Caution)",
-                color: "#b06000",
-                bg: "#fef7e0",
-                border: "#feefc3",
+                key: "Yellow",
+                word: "Stretched",
+                color: "var(--status-stretched)",
+                bg: "var(--status-stretched-bg)",
+                border: "var(--status-stretched-border)",
+                icon: STATUS_META.Yellow.icon,
                 pct: status_distribution_pct.Yellow,
                 count: status_distribution_counts.Yellow,
                 desc: "Minor workload rhythm variances"
               },
               {
-                label: "Elevated Risk (Early Warning)",
-                color: "#c53929",
-                bg: "#feefe3",
-                border: "#fad2cf",
+                key: "Orange",
+                word: "Strained",
+                color: "var(--status-strained)",
+                bg: "var(--status-strained-bg)",
+                border: "var(--status-strained-border)",
+                icon: STATUS_META.Orange.icon,
                 pct: status_distribution_pct.Orange,
                 count: status_distribution_counts.Orange,
-                desc: "Flagged 5+ days prior to acute exhaustion"
+                desc: "Flagged 5+ days before exhaustion"
               },
               {
-                label: "Acute Burnout Risk",
-                color: "#c5221f",
-                bg: "#fce8e6",
-                border: "#f5c2cb",
+                key: "Red",
+                word: "Overloaded",
+                color: "var(--status-overloaded)",
+                bg: "var(--status-overloaded-bg)",
+                border: "var(--status-overloaded-border)",
+                icon: STATUS_META.Red.icon,
                 pct: status_distribution_pct.Red,
                 count: status_distribution_counts.Red,
-                desc: "Sustained severe multi-factor behavioral collapse"
+                desc: "Severe sustained multi-factor strain"
               }
             ].map((stat, idx) => (
-              <div key={idx} className="p-5 rounded-2xl bg-white border ws-card" style={{ borderColor: stat.border }}>
+              <div key={idx} className="ws-card p-5" style={{ borderColor: stat.border }}>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 truncate">{stat.label}</span>
-                  <span className="w-3 h-3 rounded-full" style={{ backgroundColor: stat.color }} />
+                  <div className="ws-badge text-xs" style={{ backgroundColor: stat.bg, color: stat.color }}>
+                    {stat.icon}
+                    <span>{stat.word}</span>
+                  </div>
+                  <span className="text-xs font-medium text-[var(--text-muted)]">{stat.count} members</span>
                 </div>
-                <div className="text-3xl font-bold" style={{ color: stat.color }}>{stat.pct}%</div>
-                <div className="text-xs font-medium text-gray-700 mt-1">{stat.count} Team Members</div>
-                <p className="text-[11px] text-gray-400 mt-2">{stat.desc}</p>
+                <div className="text-3xl font-bold mt-1" style={{ color: stat.color }}>{stat.pct}%</div>
+                <p className="text-[11px] text-[var(--text-secondary)] mt-2">{stat.desc}</p>
               </div>
             ))}
           </div>
 
-          {/* Trajectory & Category Drivers */}
+          {/* Quick Preview Trajectory & Broad Category Drivers */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 30-Day Aggregated Trend */}
-            <div className="p-6 rounded-2xl bg-white border border-gray-200 ws-card">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Early Warning Signal</span>
-                  <h3 className="text-gray-900 mt-0.5">30-Day Team Burnout Trajectory</h3>
-                </div>
-                <span className="text-xs font-semibold text-gray-500">Rolling % at Elevated Risk</span>
-              </div>
-              <div className="h-48 flex items-end gap-1.5 pt-4 pb-2 border-b border-gray-200">
-                {trajectory_30d.map((pt, i) => {
-                  const h = Math.max(12, (pt.pct_elevated_risk / 35.0) * 160);
+            <div className="ws-card p-6">
+              <h3 className="text-base font-semibold text-[var(--text-primary)] mb-1">30-day burnout trajectory</h3>
+              <p className="text-xs text-[var(--text-secondary)] mb-4">Rolling percentage of department at elevated risk</p>
+              <div className="h-44 flex items-end gap-1.5 pt-4 pb-1 border-b border-[var(--border-subtle)]">
+                {trajectory_30d.slice(-15).map((pt, i) => {
+                  const h = Math.max(10, (pt.pct_elevated_risk / 35.0) * 150);
                   const isHigh = pt.pct_elevated_risk > 20;
                   return (
-                    <div key={i} className="flex-1 flex flex-col items-center group relative">
+                    <div key={i} className="flex-1 flex flex-col items-center">
                       <div
-                        className="w-full rounded-t transition-all hover:opacity-80"
-                        style={{ height: `${h}px`, backgroundColor: isHigh ? "#c53929" : "#0078d4" }}
+                        className="w-full rounded-t transition-all"
+                        style={{ height: `${h}px`, backgroundColor: isHigh ? "var(--status-strained)" : "var(--primary)" }}
                       />
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full mb-1 text-[10px] bg-black text-white px-1.5 py-0.5 rounded whitespace-nowrap z-20 pointer-events-none">
-                        {pt.date}: {pt.pct_elevated_risk}%
-                      </div>
                     </div>
                   );
                 })}
               </div>
-              <div className="flex justify-between text-[11px] text-gray-400 mt-2">
-                <span>30 Days Ago</span>
-                <span>15 Days Ago</span>
+              <div className="flex justify-between text-xs text-[var(--text-muted)] mt-2">
+                <span>15 days ago</span>
                 <span>Today</span>
               </div>
             </div>
 
-            {/* The 4 Broad Category Attribution Bars */}
-            <div className="p-6 rounded-2xl bg-white border border-gray-200 ws-card">
-              <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Privacy Attribution Breakdown</span>
-              <h3 className="text-gray-900 mt-0.5 mb-4">Primary Drivers Across Department</h3>
-              <div className="space-y-4">
+            <div className="ws-card p-6">
+              <h3 className="text-base font-semibold text-[var(--text-primary)] mb-1">Primary behavioral contributors</h3>
+              <p className="text-xs text-[var(--text-secondary)] mb-4">Aggregated across all team members</p>
+              <div className="space-y-3">
                 {category_drivers.map((cat, i) => (
                   <div key={i}>
-                    <div className="flex justify-between text-xs font-medium text-gray-800 mb-1">
+                    <div className="flex justify-between text-xs font-medium text-[var(--text-primary)] mb-1">
                       <span>{cat.category}</span>
-                      <span className="font-bold text-[#0078d4]">{cat.attribution_pct}%</span>
+                      <span className="font-bold text-[var(--primary)]">{cat.attribution_pct}%</span>
                     </div>
-                    <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="w-full h-2 bg-[var(--bg-card-subtle)] rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-[#0078d4] rounded-full"
-                        style={{ width: `${cat.attribution_pct * 2}%` }}
+                        className="h-full rounded-full"
+                        style={{ width: `${cat.attribution_pct * 2}%`, backgroundColor: "var(--primary)" }}
                       />
                     </div>
-                    <div className="text-[11px] text-gray-400 mt-1">{cat.description}</div>
                   </div>
                 ))}
               </div>
@@ -817,53 +1657,50 @@
     }
 
     // =========================================================================
-    // 3. BAT-12 INTERACTIVE DAILY SURVEY MODAL
+    // BAT-12 INTERACTIVE MODAL COMPONENT
     // =========================================================================
     function BAT12SurveyModal({ responses, setResponses, onSubmit, onClose, submitting, success }) {
       const handleRadio = (key, val) => {
         setResponses(prev => ({ ...prev, [key]: val }));
       };
 
-      // Live compute subscales
       const ex = ((responses.bat_q1 + responses.bat_q2 + responses.bat_q3) / 3).toFixed(2);
       const md = ((responses.bat_q4 + responses.bat_q5 + responses.bat_q6) / 3).toFixed(2);
       const ei = ((responses.bat_q7 + responses.bat_q8 + responses.bat_q9) / 3).toFixed(2);
       const ci = ((responses.bat_q10 + responses.bat_q11 + responses.bat_q12) / 3).toFixed(2);
-      const total = (
-        Object.values(responses).reduce((a, b) => a + b, 0) / 12
-      ).toFixed(2);
+      const total = (Object.values(responses).reduce((a, b) => a + b, 0) / 12).toFixed(2);
 
       return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop overflow-y-auto">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-2xl max-w-3xl w-full p-6 md:p-8 my-8 relative">
+          <div className="ws-card max-w-2xl w-full p-6 md:p-8 my-8 relative shadow-2xl">
             <button
               onClick={onClose}
-              className="absolute top-5 right-5 text-gray-400 hover:text-gray-700 text-xl font-bold"
+              className="absolute top-5 right-5 text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xl font-bold"
             >
-              ✕
+              &times;
             </button>
 
             <div className="mb-6">
-              <span className="text-xs font-semibold uppercase tracking-wider text-[#0078d4]">
-                Burnout Assessment Tool (BAT-12 Short Version)
+              <span className="text-xs font-semibold uppercase tracking-wider text-[var(--primary)]">
+                Burnout Assessment Tool (BAT-12)
               </span>
-              <h2 className="text-gray-900 mt-1">End-of-Day Psychological Pulse</h2>
-              <p className="text-sm text-gray-500 mt-1">
+              <h2 className="text-xl font-bold text-[var(--text-primary)] mt-1">End-of-day psychological check-in</h2>
+              <p className="text-xs text-[var(--text-secondary)] mt-1">
                 Rate how often each statement applied to you during your workday today (1 = Never, 5 = Always).
               </p>
             </div>
 
-            {/* Survey Items */}
-            <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2 divide-y divide-gray-100">
+            {/* Questions list */}
+            <div className="space-y-3.5 max-h-[50vh] overflow-y-auto pr-2 divide-y divide-[var(--border-subtle)]">
               {BAT12_QUESTIONS.map((q) => (
                 <div key={q.id} className="pt-3 first:pt-0">
-                  <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                    <span className="font-semibold text-gray-800">Item {q.id}. {q.text}</span>
-                    <span className="text-[11px] bg-gray-100 px-2 py-0.5 rounded text-gray-600 font-medium">
+                  <div className="flex items-center justify-between text-xs mb-1.5">
+                    <span className="font-medium text-[var(--text-primary)]">{q.id}. {q.text}</span>
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-[var(--bg-card-subtle)] text-[var(--text-secondary)] font-medium">
                       {q.dim}
                     </span>
                   </div>
-                  <div className="grid grid-cols-5 gap-2 mt-2">
+                  <div className="grid grid-cols-5 gap-1.5">
                     {[
                       { val: 1, label: "Never" },
                       { val: 2, label: "Rarely" },
@@ -875,12 +1712,13 @@
                         key={opt.val}
                         type="button"
                         onClick={() => handleRadio(q.key, opt.val)}
-                        className={`py-1.5 px-2 text-xs rounded-xl border text-center transition-all ${responses[q.key] === opt.val
-                          ? "bg-[#0078d4] text-white border-[#0078d4] font-bold shadow-sm"
-                          : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                          }`}
+                        className={`py-1.5 px-2 text-xs rounded-xl border text-center transition-all ${
+                          responses[q.key] === opt.val
+                            ? "bg-[var(--primary)] text-white border-[var(--primary)] font-bold shadow-xs"
+                            : "bg-[var(--bg-card)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:bg-[var(--bg-card-subtle)]"
+                        }`}
                       >
-                        <div>{opt.val}</div>
+                        <div className="font-semibold">{opt.val}</div>
                         <div className="text-[10px] opacity-80">{opt.label}</div>
                       </button>
                     ))}
@@ -889,24 +1727,24 @@
               ))}
             </div>
 
-            {/* Live Subscale Preview Strip */}
-            <div className="mt-6 p-4 rounded-xl bg-gray-50 border border-gray-200 flex flex-wrap items-center justify-between gap-3 text-xs">
-              <div>Exhaustion: <span className="font-bold text-gray-800">{ex}</span></div>
-              <div>Mental Distance: <span className="font-bold text-gray-800">{md}</span></div>
-              <div>Emotional: <span className="font-bold text-gray-800">{ei}</span></div>
-              <div>Cognitive: <span className="font-bold text-gray-800">{ci}</span></div>
-              <div className="border-l pl-3 font-semibold text-[#0078d4]">
-                Total Score: <span className="text-base font-bold">{total} / 5.0</span>
+            {/* Subscale summary preview */}
+            <div className="mt-5 p-3 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div>Exhaustion: <strong className="text-[var(--text-primary)]">{ex}</strong></div>
+              <div>Mental distance: <strong className="text-[var(--text-primary)]">{md}</strong></div>
+              <div>Emotional: <strong className="text-[var(--text-primary)]">{ei}</strong></div>
+              <div>Cognitive: <strong className="text-[var(--text-primary)]">{ci}</strong></div>
+              <div className="border-l border-[var(--border-strong)] pl-3 text-[var(--primary)] font-semibold">
+                Total score: <strong className="text-sm">{total} / 5.0</strong>
               </div>
             </div>
 
-            {/* Submit Actions */}
+            {/* Submit and Cancel Buttons */}
             <div className="mt-6 flex items-center justify-end gap-3">
               <button onClick={onClose} className="ws-btn-secondary" disabled={submitting}>
                 Cancel
               </button>
               <button onClick={onSubmit} className="ws-btn-primary" disabled={submitting}>
-                {submitting ? "Submitting..." : success ? "✓ Survey Recorded!" : "Submit Daily Survey"}
+                {submitting ? "Submitting..." : success ? "&check; Check-in recorded!" : "Submit check-in"}
               </button>
             </div>
           </div>
