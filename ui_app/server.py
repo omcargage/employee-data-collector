@@ -1521,6 +1521,16 @@ STATIC_DIR.mkdir(parents=True, exist_ok=True)
 
 
 @app.get("/", response_class=HTMLResponse)
+@app.get("/check-in", response_class=HTMLResponse)
+@app.get("/overview", response_class=HTMLResponse)
+@app.get("/teams", response_class=HTMLResponse)
+@app.get("/drivers", response_class=HTMLResponse)
+@app.get("/checkins", response_class=HTMLResponse)
+@app.get("/actions", response_class=HTMLResponse)
+@app.get("/reports", response_class=HTMLResponse)
+@app.get("/admin", response_class=HTMLResponse)
+@app.get("/suggestions", response_class=HTMLResponse)
+@app.get("/privacy", response_class=HTMLResponse)
 def serve_index():
     index_file = STATIC_DIR / "index.html"
     if not index_file.exists():
@@ -1530,6 +1540,17 @@ def serve_index():
 
 # Mount static assets if any
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+
+@app.get("/{full_path:path}", response_class=HTMLResponse)
+def serve_spa_fallback(full_path: str):
+    """Fallback handler to route client-side navigation back to index.html."""
+    if full_path.startswith("api/") or full_path.startswith("static/"):
+        raise HTTPException(status_code=404, detail="Endpoint not found")
+    index_file = STATIC_DIR / "index.html"
+    if not index_file.exists():
+        return HTMLResponse("<h1>WorkSense App Loading...</h1>", status_code=200)
+    return HTMLResponse(content=index_file.read_text(encoding="utf-8"), status_code=200)
 
 
 if __name__ == "__main__":

@@ -8,45 +8,35 @@ echo   FLAME University Research Prototype
 echo ======================================================================
 echo.
 
-set SCRIPT_DIR=%~dp0
-set TARGET_DIR=%SCRIPT_DIR%
+setlocal enabledelayedexpansion
+set "SCRIPT_DIR=%~dp0"
 
-:: Detect python executable across common paths
-set PYTHON=
-if exist "%SCRIPT_DIR%..\agent\.venv\Scripts\python.exe" (
-    set PYTHON="%SCRIPT_DIR%..\agent\.venv\Scripts\python.exe"
-    set TARGET_DIR=%SCRIPT_DIR%
-) else if exist "%SCRIPT_DIR%agent\.venv\Scripts\python.exe" (
-    set PYTHON="%SCRIPT_DIR%agent\.venv\Scripts\python.exe"
-    set TARGET_DIR=%SCRIPT_DIR%ui_app\
-) else if exist "D:\FLAME_UG\UG4\IMP_Data\employee-data-collector\agent\.venv\Scripts\python.exe" (
-    set PYTHON="D:\FLAME_UG\UG4\IMP_Data\employee-data-collector\agent\.venv\Scripts\python.exe"
-    set TARGET_DIR=D:\FLAME_UG\UG4\IMP_Data\employee-data-collector\ui_app\
-) else (
-    set PYTHON=python
-)
-
-:: Detect desktop.py
-set DESKTOP_SCRIPT=
-if exist "%TARGET_DIR%desktop.py" (
-    set DESKTOP_SCRIPT="%TARGET_DIR%desktop.py"
-) else if exist "%SCRIPT_DIR%desktop.py" (
-    set DESKTOP_SCRIPT="%SCRIPT_DIR%desktop.py"
-) else if exist "D:\FLAME_UG\UG4\IMP_Data\employee-data-collector\ui_app\desktop.py" (
-    set DESKTOP_SCRIPT="D:\FLAME_UG\UG4\IMP_Data\employee-data-collector\ui_app\desktop.py"
-)
-
-if "%DESKTOP_SCRIPT%"=="" (
-    echo [ERROR] Could not find desktop.py.
-    echo Please make sure WorkSense files are in place.
+if not exist "%SCRIPT_DIR%desktop.py" (
+    echo [ERROR] Cannot locate desktop.py in %SCRIPT_DIR%
     pause
     exit /b 1
 )
 
-cd /d "%TARGET_DIR%"
-%PYTHON% %DESKTOP_SCRIPT%
+set "PY_EXE="
+if exist "%SCRIPT_DIR%..\agent\.venv\Scripts\python.exe" (
+    set "PY_EXE=%SCRIPT_DIR%..\agent\.venv\Scripts\python.exe"
+) else if exist "D:\FLAME_UG\UG4\IMP_Data\employee-data-collector\agent\.venv\Scripts\python.exe" (
+    set "PY_EXE=D:\FLAME_UG\UG4\IMP_Data\employee-data-collector\agent\.venv\Scripts\python.exe"
+) else (
+    set "PY_EXE=python"
+)
+
+echo Starting WorkSense with: !PY_EXE!
+echo.
+
+cd /d "%SCRIPT_DIR%"
+"!PY_EXE!" "desktop.py"
+
 if %ERRORLEVEL% NEQ 0 (
     echo.
-    echo [ERROR] WorkSense exited with error code %ERRORLEVEL%.
+    echo ======================================================================
+    echo [ERROR] WorkSense closed with return code %ERRORLEVEL%.
+    echo Check the error message above for details.
+    echo ======================================================================
     pause
 )
