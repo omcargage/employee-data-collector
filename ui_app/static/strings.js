@@ -12,7 +12,7 @@ window.WORK_SENSE_STRINGS = {
     privateLockLine: "Only you can see this page.",
     managerLockLine: "Individual data is private to each employee.",
     demoModeSample: "Sample employees",
-    demoModeLive: "Live data",
+    demoModeLive: "Live app",
     roleEmployee: "Employee",
     roleManager: "Manager"
   },

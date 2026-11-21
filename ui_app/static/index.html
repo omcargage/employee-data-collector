@@ -1221,7 +1221,7 @@
                     style={{ backgroundColor: !isDemoMode ? "var(--status-steady)" : "var(--primary)" }}
                   />
                   <span className="text-[11px] text-[var(--text-secondary)]">
-                    {!isDemoMode ? "Live data" : "Sample data"}
+                    {!isDemoMode ? "Live app" : "Sample data"}
                   </span>
                 </div>
               </div>
@@ -3036,7 +3036,7 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            employee_id: selectedPersonaId,
+            employee_id: !isDemoMode ? "OMKAR_GAGE" : selectedPersonaId,
             logical_day: employeeData ? employeeData.current_date : null,
             items: batResponses,
             early_checkin: isEarlyCheckin,
@@ -3064,6 +3064,9 @@
         role: "Backend Engineer",
         department: "Infrastructure"
       };
+
+      const currentDisplayName = !isDemoMode ? (employeeData?.name || "Omkar Gage") : currentPersona.name;
+      const currentDisplayRole = !isDemoMode ? (employeeData?.role || "") : currentPersona.role;
 
       // Navigation Items for Employee and Manager Portals
       const navItems = viewRole === "employee" ? [
@@ -3296,14 +3299,22 @@
                   <div className="flex items-center gap-2.5 text-xs">
                     <div className="text-right hidden sm:block">
                       <div className="font-semibold text-[var(--text-primary)] leading-tight">
-                        {viewRole === "employee" ? currentPersona.name : "Engineering Director"}
+                        {viewRole === "employee" ? currentDisplayName : "Engineering Director"}
                       </div>
-                      <div className="text-[11px] text-[var(--text-muted)]">
-                        {viewRole === "employee" ? currentPersona.role : "People Analytics"}
-                      </div>
+                      {viewRole === "employee" ? (
+                        currentDisplayRole ? (
+                          <div className="text-[11px] text-[var(--text-muted)]">
+                            {currentDisplayRole}
+                          </div>
+                        ) : null
+                      ) : (
+                        <div className="text-[11px] text-[var(--text-muted)]">
+                          People Analytics
+                        </div>
+                      )}
                     </div>
                     <div className="w-8 h-8 rounded-full bg-[var(--primary)] text-white font-semibold flex items-center justify-center text-xs shadow-xs">
-                      {viewRole === "employee" ? currentPersona.name.split(" ").map(n => n[0]).join("") : "ED"}
+                      {viewRole === "employee" ? currentDisplayName.split(" ").map(n => n[0]).join("") : "ED"}
                     </div>
                   </div>
                 </div>
@@ -3408,8 +3419,7 @@
 
               {/* App Footer */}
               <footer className="border-t border-[var(--border-subtle)] bg-[var(--bg-card)] py-3 px-6 text-center text-xs text-[var(--text-muted)] mb-14">
-                WorkSense &mdash; Built as an interdisciplinary student research project at FLAME University, Pune.
-                <span className="ml-2 font-medium text-[var(--text-secondary)]">Strict Zero-Identification Standard.</span>
+                WorkSense &mdash; Built as an interdisciplinary student research project at FLAME University, Pune
               </footer>
             </div>
           </div>
@@ -3461,7 +3471,7 @@
                       : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   }`}
                 >
-                  Live data
+                  Live app
                 </button>
                 <button
                   onClick={() => setIsDemoMode(true)}
@@ -5340,7 +5350,7 @@
 
                 {/* SVG Chart Rendering */}
                 <div className="relative pt-2 pb-2">
-                  <svg className="w-full h-56 overflow-visible" viewBox="0 0 600 200" preserveAspectRatio="none">
+                  <svg className="w-full h-56" viewBox="0 0 680 200">
                     <defs>
                       <linearGradient id="managerGrad" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="var(--status-strained)" stopOpacity="0.28" />
@@ -5350,29 +5360,29 @@
 
                     {/* Y-Axis Guidelines & Labels */}
                     {[
-                      { val: 0, y: 170 },
-                      { val: 10, y: 132.5 },
-                      { val: 20, y: 95 },
-                      { val: 30, y: 57.5 },
+                      { val: 0, y: 150 },
+                      { val: 10, y: 117.5 },
+                      { val: 20, y: 85 },
+                      { val: 30, y: 52.5 },
                       { val: 40, y: 20 },
                     ].map((g, i) => (
                       <g key={i}>
                         <line
-                          x1="45"
+                          x1="50"
                           y1={g.y}
-                          x2="580"
+                          x2="630"
                           y2={g.y}
                           stroke="var(--border-subtle)"
                           strokeWidth="1"
                           strokeDasharray={g.val === 20 ? "4 4" : "none"}
                         />
                         <text
-                          x="38"
+                          x="42"
                           y={g.y + 4}
-                          fill="var(--text-muted)"
-                          fontSize="10"
+                          fill="var(--text-secondary)"
+                          fontSize="11"
                           textAnchor="end"
-                          fontFamily="Inter, sans-serif"
+                          fontFamily="Inter, system-ui, sans-serif"
                         >
                           {g.val}%
                         </text>
@@ -5381,13 +5391,13 @@
 
                     {/* 20% Benchmark Line Label */}
                     <text
-                      x="580"
-                      y="91"
+                      x="630"
+                      y="78"
                       fill="var(--status-strained)"
-                      fontSize="9"
-                      fontWeight="bold"
+                      fontSize="11"
+                      fontWeight="600"
                       textAnchor="end"
-                      fontFamily="Inter, sans-serif"
+                      fontFamily="Inter, system-ui, sans-serif"
                     >
                       Threshold (20%)
                     </text>
@@ -5395,14 +5405,14 @@
                     {/* Area & Line Path */}
                     {(() => {
                       const points = (four_week_outlook || []).map((pt, idx) => {
-                        const x = 80 + idx * 160;
-                        const y = 170 - (pt.pct / 40.0) * 150;
+                        const x = 95 + idx * 160;
+                        const y = 150 - (pt.pct / 40.0) * 130;
                         return { ...pt, x, y };
                       });
 
                       if (points.length < 2) return null;
 
-                      const areaD = `M ${points[0].x} 170 L ` + points.map(p => `${p.x} ${p.y}`).join(" L ") + ` L ${points[points.length - 1].x} 170 Z`;
+                      const areaD = `M ${points[0].x} 150 L ` + points.map(p => `${p.x} ${p.y}`).join(" L ") + ` L ${points[points.length - 1].x} 150 Z`;
                       const lineD = `M ` + points.map(p => `${p.x} ${p.y}`).join(" L ");
 
                       return (
@@ -5429,14 +5439,36 @@
                                 />
                                 <text
                                   x={p.x}
-                                  y={p.y - 10}
+                                  y={p.y - 12}
                                   fill={isElevated ? "var(--status-strained)" : "var(--text-primary)"}
-                                  fontSize="11"
+                                  fontSize="12"
                                   fontWeight="bold"
                                   textAnchor="middle"
-                                  fontFamily="Inter, sans-serif"
+                                  fontFamily="Inter, system-ui, sans-serif"
                                 >
                                   {p.pct}%
+                                </text>
+                                {/* Synchronized X-Axis Labels directly under each point */}
+                                <text
+                                  x={p.x}
+                                  y={172}
+                                  fill="var(--text-primary)"
+                                  fontSize="12"
+                                  fontWeight="600"
+                                  textAnchor="middle"
+                                  fontFamily="Inter, system-ui, sans-serif"
+                                >
+                                  {p.week}
+                                </text>
+                                <text
+                                  x={p.x}
+                                  y={188}
+                                  fill="var(--text-muted)"
+                                  fontSize="10.5"
+                                  textAnchor="middle"
+                                  fontFamily="Inter, system-ui, sans-serif"
+                                >
+                                  {p.date_range}
                                 </text>
                               </g>
                             );
@@ -5445,16 +5477,6 @@
                       );
                     })()}
                   </svg>
-
-                  {/* X-Axis Labels */}
-                  <div className="grid grid-cols-4 gap-2 text-center text-xs text-[var(--text-secondary)] pt-2 border-t border-[var(--border-subtle)]">
-                    {(four_week_outlook || []).map((w, idx) => (
-                      <div key={idx} className="space-y-0.5">
-                        <div className="font-bold text-[var(--text-primary)]">{w.week}</div>
-                        <div className="text-[11px] text-[var(--text-muted)]">{w.date_range}</div>
-                      </div>
-                    ))}
-                  </div>
                 </div>
 
                 {/* Insight Callout */}

@@ -72,11 +72,13 @@ class WindowsInputProvider(InputProvider):
             on_press=self._on_press,
             on_release=self._on_release,
         )
+        self._keyboard_listener.daemon = True
         self._mouse_listener = MouseListener(
             on_move=self._on_move,
             on_click=self._on_click,
             on_scroll=self._on_scroll,
         )
+        self._mouse_listener.daemon = True
 
         self._keyboard_listener.start()
         self._mouse_listener.start()
