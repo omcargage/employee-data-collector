@@ -6,13 +6,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WorkSense — Early-Warning Burnout Prevention</title>
 
-  <!-- Google Font: Inter -->
+  <script>
+    // Global fallback for unhandled exceptions to prevent blank screen
+    window.addEventListener('error', function(e) {
+      var root = document.getElementById('root');
+      if (root && root.children.length === 0) {
+        root.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#F7F6F3;padding:24px;font-family:sans-serif;">' +
+          '<div style="max-width:480px;background:#fff;border:1px solid #E8E6DF;border-radius:16px;padding:32px;box-shadow:0 4px 20px rgba(0,0,0,0.06);text-align:center;">' +
+          '<h2 style="font-size:20px;font-weight:700;color:#181816;margin-bottom:8px;">Unable to initialize WorkSense</h2>' +
+          '<p style="font-size:14px;color:#54524C;line-height:1.5;margin-bottom:24px;">A runtime error occurred during startup. Please reload or restart the application.</p>' +
+          '<button onclick="location.reload()" style="background:#1F5C63;color:#fff;border:none;padding:10px 24px;border-radius:9999px;font-size:14px;font-weight:600;cursor:pointer;">Reload WorkSense</button>' +
+          '<details style="margin-top:20px;text-align:left;font-size:12px;color:#8A8880;"><summary style="cursor:pointer;">Technical details</summary>' +
+          '<pre style="white-space:pre-wrap;background:#F0EFEA;padding:12px;border-radius:8px;margin-top:8px;overflow-x:auto;">' + (e.message || 'Unknown error') + '\n' + (e.filename ? e.filename + ':' + e.lineno : '') + '</pre>' +
+          '</details></div></div>';
+      }
+    });
+  </script>
+
+  <!-- Optional Web Font: Inter (non-blocking) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind CSS (Local Vendor) -->
+  <script src="/static/vendor/tailwindcss.js"></script>
 
   <!-- Design Tokens (CSS Variables: Light and Dark set) -->
   <style>
@@ -251,10 +268,10 @@
     }
   </style>
 
-  <!-- React 18, ReactDOM, and Babel Standalone for in-browser compilation -->
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- React 18, ReactDOM, and Babel Standalone (Local Vendor - 100% Offline Reliable) -->
+  <script src="/static/vendor/react.production.min.js"></script>
+  <script src="/static/vendor/react-dom.production.min.js"></script>
+  <script src="/static/vendor/babel.min.js"></script>
   <!-- WorkSense Centralized User-Facing Copy & Tooltips -->
   <script src="/static/strings.js"></script>
 </head>
@@ -1046,8 +1063,8 @@
             band: baselineBands.after_hours_mins
           },
           {
-            kmsgs",
-            metricKey: "afte                
+            key: "after_hours_msgs",
+            metricKey: "after_hours_msgs",
             label: "After-hours messages",
             meaning: "Late-night communication keeps stress hormones elevated before bedtime.",
             band: baselineBands.after_hours_msgs
@@ -1099,7 +1116,7 @@
                 className="ws-btn-primary text-xs py-2 px-4 flex items-center gap-2 shadow-xs"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth=4v8m-7 0h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
                 <span>View data</span>
               </button>
@@ -3760,7 +3777,7 @@
         explanation: "Routine system activity and communication timestamps detected between 7:00 PM and 8:30 AM.",
         benchmark_pct: 18.0,
         status_token: "Stretched",
-        recommended_action: "Implement <TermTooltip termKey="quietHours" label="scheduled quiet hours" /> and discourage off-hours messaging."
+        recommended_action: "Implement scheduled quiet hours and discourage off-hours messaging."
       },
       {
         id: "break_patterns",
