@@ -321,7 +321,7 @@ def build_live_employee_dashboard() -> Dict[str, Any]:
             "type": "healthy",
             "icon": "check-circle",
             "title": "Healthy Rhythm Maintained",
-            "message": "WorkSense is running live in the background. Your desktop rhythm is steady.",
+            "message": "WorkSense is running smoothly in the background. Your work rhythm looks balanced today.",
         }
     ]
 
@@ -344,7 +344,7 @@ def build_live_employee_dashboard() -> Dict[str, Any]:
         "predicted_status_5d": "Calibration" if not is_calibrated else "Steady",
         "confidence": None if not is_calibrated else 0.95,
         "risk_score": None if not is_calibrated else 0.10,
-        "status_description": f"WorkSense is observing your desktop habits across typing pace, continuous focus stretches, and breaks to establish your personal baseline (Day {days_collected} of 14). No burnout status is generated during calibration.",
+        "status_description": f"WorkSense is getting to know your typical work habits (Day {days_collected} of 14). During this time, we learn your normal rhythm so that future suggestions are tailored just for you.",
         "primary_drivers": [],
         "relative_deviations": {
             "work_stretch": 0.05,
@@ -450,7 +450,7 @@ def load_application_state():
             "profile": "stressed",
             "preset": "severe_red",
             "title": "Vikram (Acute Burnout - Red)",
-            "description": "Sustained high cognitive fatigue, backspace spikes, consecutive late nights.",
+            "description": "Sustained high mental fatigue, increased typing edits, and consecutive late nights.",
             "cutoff_day": 75,
         },
     ]
@@ -592,29 +592,29 @@ def get_employee_dashboard(
         nudges.append({
             "type": "stretch",
             "icon": "alarm",
-            "title": "Extended Continuous Stretch",
-            "message": f"You worked a continuous stretch of {int(latest_row['longest_stretch_duration_mins'])} mins. Consider taking a 10-min screen break.",
+            "title": "Long Work Stretch",
+            "message": f"You worked for {int(latest_row['longest_stretch_duration_mins'])} mins without a break. Consider stepping away for 10 minutes to recharge.",
         })
     if float(latest_row["longest_lunch_break_mins"]) < 20:
         nudges.append({
             "type": "lunch",
             "icon": "coffee",
-            "title": "Short / Skipped Lunch",
-            "message": f"Your midday meal break was only {int(latest_row['longest_lunch_break_mins'])} mins today. Protect your midday recovery block.",
+            "title": "Short or Skipped Lunch",
+            "message": f"Your lunch break was only {int(latest_row['longest_lunch_break_mins'])} mins today. Remember to take time for a full lunch break.",
         })
     if int(latest_row["msgs_sent_after_hours"]) >= 5:
         nudges.append({
             "type": "boundary",
             "icon": "moon",
-            "title": "Late-Night Boundary Alert",
-            "message": f"{int(latest_row['msgs_sent_after_hours'])} communication events sent outside work hours. Wrap up for the night to avoid sleep debt.",
+            "title": "Late-Night Work",
+            "message": f"You sent {int(latest_row['msgs_sent_after_hours'])} messages outside regular work hours. Unwind and disconnect for good rest tonight.",
         })
     if not nudges:
         nudges.append({
             "type": "healthy",
             "icon": "check-circle",
-            "title": "Healthy Rhythm Maintained",
-            "message": "Your work stretches and break intervals are well within your healthy baseline bounds.",
+            "title": "Balanced Rhythm Today",
+            "message": "Your work stretches and break times are well balanced today.",
         })
 
     # Relative Deviations (Z-Scores)
@@ -933,7 +933,7 @@ def export_employee_privacy_data(employee_id: str = "EMP_089"):
     return {
         "export_date": datetime.now(timezone.utc).isoformat(),
         "employee_id": employee_id,
-        "standard": "WorkSense Zero-Identification Framework (WHO-Aligned)",
+        "standard": "WorkSense 100% Private Architecture (WHO-Aligned)",
         "total_days_recorded": len(emp_df),
         "telemetry_rollups": emp_df.to_dict(orient="records") if len(emp_df) > 0 else [],
         "recent_checkins": [v for k, v in DATA_CACHE["recent_bat_submissions"].items() if k.startswith(employee_id)],
@@ -1202,7 +1202,7 @@ def get_manager_overview(team: str = Query("all"), date_range: str = Query("4w")
             "probabilities_redacted": True,
             "k_anonymity_threshold": 5,
             "persistent_line": "Individual data is private to each employee.",
-            "governance_standard": "WorkSense Zero-Identification Protocol (WHO-Aligned)",
+            "governance_standard": "WorkSense 100% Private Architecture (WHO-Aligned)",
         },
     }
 
@@ -1459,7 +1459,7 @@ def get_manager_drivers():
             "category": "Workload hours",
             "affecting_pct": 42.0,
             "headline": "Affecting 42% of the team",
-            "explanation": "Average active daily workload consistently exceeds 8.5 hours over rolling 5-day observation windows.",
+            "explanation": "Average daily work time regularly exceeds 8.5 hours over the past week.",
             "benchmark_pct": 25.0,
             "impact_level": "High",
             "status_token": "Strained",
@@ -1470,7 +1470,7 @@ def get_manager_drivers():
             "category": "After-hours work",
             "affecting_pct": 35.0,
             "headline": "Affecting 35% of the team",
-            "explanation": "Routine system activity and communication timestamps detected between 7:00 PM and 8:30 AM.",
+            "explanation": "Regular activity and messages detected outside regular working hours (between 7:00 PM and 8:30 AM).",
             "benchmark_pct": 18.0,
             "impact_level": "Moderate",
             "status_token": "Stretched",
@@ -1481,7 +1481,7 @@ def get_manager_drivers():
             "category": "Break patterns",
             "affecting_pct": 29.0,
             "headline": "Affecting 29% of the team",
-            "explanation": "Extended continuous desk stretches exceeding 90 minutes without a recovery pause, or skipped lunch breaks.",
+            "explanation": "Working for more than 90 minutes without a break, or skipping lunch breaks.",
             "benchmark_pct": 20.0,
             "impact_level": "Moderate",
             "status_token": "Stretched",
@@ -1492,7 +1492,7 @@ def get_manager_drivers():
             "category": "Focus time",
             "affecting_pct": 24.0,
             "headline": "Affecting 24% of the team",
-            "explanation": "High task fragmentation and calendar density preventing 90-minute blocks of uninterrupted deep work.",
+            "explanation": "Frequent meeting interruptions preventing blocks of uninterrupted focus time.",
             "benchmark_pct": 15.0,
             "impact_level": "Attention needed",
             "status_token": "Steady",
@@ -1540,32 +1540,32 @@ def get_manager_checkins():
         ],
         "domain_breakdown": [
             {
-                "domain": "Exhaustion",
+                "domain": "Physical tiredness",
                 "score": 2.2,
                 "max_score": 5.0,
                 "status": "Stretched",
-                "description": "Physical and mental fatigue during the working day.",
+                "description": "Physical tiredness and low energy during the workday.",
             },
             {
-                "domain": "Mental distance",
+                "domain": "Motivation & energy",
                 "score": 1.8,
                 "max_score": 5.0,
                 "status": "Steady",
-                "description": "Psychological detachment and cynicism toward work tasks.",
+                "description": "Enthusiasm and connection to daily work tasks.",
             },
             {
-                "domain": "Cognitive impairment",
+                "domain": "Mental focus",
                 "score": 1.9,
                 "max_score": 5.0,
                 "status": "Steady",
-                "description": "Attention lapses, memory slips, and concentration disruption.",
+                "description": "Focus and concentration throughout the day.",
             },
             {
-                "domain": "Emotional impairment",
+                "domain": "Daily stress & mood",
                 "score": 1.6,
                 "max_score": 5.0,
                 "status": "Steady",
-                "description": "Heightened emotional reactivity or frustration tolerance.",
+                "description": "Daily stress levels, mood balance, and patience.",
             },
         ],
         "privacy_compliance": {

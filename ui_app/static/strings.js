@@ -1,14 +1,14 @@
 /**
  * WorkSense Single Source of Copy (strings.js)
- * All user-facing strings, technical definitions, tooltips, empty states, and error states.
- * Edit this file to update any application copy without modifying React code.
+ * All user-facing strings, plain-English definitions, tooltips, empty states, error states, and authentication.
+ * Plain, warm, human language across the entire application without medical or robotic jargon.
  */
 window.WORK_SENSE_STRINGS = {
   brand: {
     name: "WorkSense",
     tagline: "Early-warning burnout prevention platform",
     researchNote: "Built as an interdisciplinary student research project at FLAME University, Pune.",
-    zeroIdentificationStandard: "Strict Zero-Identification Standard. WHO-aligned burnout framework.",
+    zeroIdentificationStandard: "100% private. We never record keystrokes, messages, or screen content.",
     privateLockLine: "Only you can see this page.",
     managerLockLine: "Individual data is private to each employee.",
     demoModeSample: "Sample employees",
@@ -17,10 +17,22 @@ window.WORK_SENSE_STRINGS = {
     roleManager: "Manager"
   },
 
+  auth: {
+    loginTitle: "Sign in to Live App",
+    loginSubtitle: "Connect to your local workstation to view private, real-time work rhythm data.",
+    emailLabel: "Work Email",
+    passwordLabel: "Password",
+    signInButton: "Sign In to Live App",
+    cancelButton: "Cancel",
+    logoutButton: "Log out",
+    credentialsHint: "Evaluation Account: omkar.gage@worksense.flame  •  Password: IMPOML",
+    errorInvalid: "Invalid email or password. Please use omkar.gage@worksense.flame and password IMPOML."
+  },
+
   nav: {
     employee: {
       today: "Today",
-      trends: "Metrics & telemetry",
+      trends: "Work habits & metrics",
       checkin: "Day Check-in",
       suggestions: "Suggestions",
       privacy: "Privacy & Data",
@@ -29,12 +41,12 @@ window.WORK_SENSE_STRINGS = {
     manager: {
       overview: "Overview",
       teams: "Teams",
-      drivers: "Drivers",
+      drivers: "Work pressure factors",
       checkins: "Check-ins",
       actions: "Actions",
       reports: "Reports",
       admin: "Admin",
-      about: "Privacy governance"
+      about: "Privacy & ethics"
     }
   },
 
@@ -66,71 +78,71 @@ window.WORK_SENSE_STRINGS = {
     calibrating: {
       word: "Learning your normal",
       title: "Baseline learning phase",
-      sentence: "WorkSense is observing your desktop habits across typing pace, continuous focus stretches, and breaks to establish your personal baseline. No burnout status is generated during this 14-day calibration window.",
+      sentence: "WorkSense is getting to know your typical typing speed, focus stretches, and break habits to establish your personal baseline. No burnout status is generated during this 14-day calibration window.",
       noStatus: "No status today"
     }
   },
 
   tooltips: {
     bat12: {
-      term: "BAT-12",
-      label: "What is BAT-12?",
-      short: "Burnout Assessment Tool (BAT-12)",
-      description: "A clinically validated 12-item self-report questionnaire developed by Prof. Wilmar Schaufeli. It assesses 4 core burnout dimensions: Exhaustion, Mental distance, Cognitive impairment, and Emotional impairment."
+      term: "Daily check-in survey",
+      label: "What is the daily check-in?",
+      short: "Daily check-in survey",
+      description: "A 12-question check-in based on established workplace research. It reflects on four simple areas of your day: physical tiredness, motivation, mental focus, and daily stress."
     },
     baselineCalibration: {
       term: "14-day baseline",
-      label: "What is baseline calibration?",
-      short: "Personal 14-day baseline",
-      description: "A 14-day observation window where WorkSense learns your unique typing pace, session lengths, and break habits without generating burnout predictions. Your normal is calibrated to you alone, never compared to team members."
+      label: "How does WorkSense learn your normal?",
+      short: "Getting to know your habits",
+      description: "During your first 14 days, WorkSense quietly learns your unique typing speed, focus stretches, and break habits. It never generates burnout alerts during this time, and your habits are never compared with anyone else."
     },
     kAnonymity: {
-      term: "k-Anonymity (k >= 5)",
-      label: "What is k-anonymity?",
-      short: "Minimum group size (k >= 5)",
-      description: "A mathematical privacy guarantee ensuring that any department or team with fewer than 5 members is completely hidden from managerial views, preventing any individual from ever being singled out."
+      term: "Privacy protection (5+ people)",
+      label: "Why are small teams hidden?",
+      short: "Hidden for privacy (5+ people)",
+      description: "To protect everyone's privacy, any team or group with fewer than 5 people is hidden from manager views so no individual can ever be singled out."
     },
     zeroIdentification: {
-      term: "Zero-identification",
-      label: "What is zero-identification?",
-      short: "Zero-Identification Protocol",
-      description: "An architectural privacy boundary: WorkSense only analyzes timing intervals, counts, and statistical rhythm variations. It NEVER captures keystroke characters, reads messages, or inspects application window titles."
+      term: "100% private by design",
+      label: "How is your privacy protected?",
+      short: "100% Private by Design",
+      description: "WorkSense only measures timing rhythms, break lengths, and pace. It NEVER reads what you type, never reads emails or messages, and never captures your screen."
     },
     dwellTime: {
-      term: "Key dwell time",
-      label: "What is key dwell time?",
-      short: "Key dwell time",
-      description: "The microsecond duration a physical keyboard key remains depressed before release. Research shows that subtle changes in key dwell time indicate physical fatigue and strain."
+      term: "Key hold time",
+      label: "What is key hold time?",
+      short: "Key hold time",
+      description: "How long a keyboard key stays pressed down. Subtle changes in key hold time over days can indicate rising fatigue and muscle tension."
     },
     grossWpm: {
-      term: "Typing speed (WPM)",
-      label: "What is typing speed evaluation?",
-      short: "Typing speed pace",
-      description: "Your active typing speed measured in words per minute. Deviations are evaluated against your personal baseline rather than a universal standard. Shown as 'changed' rather than 'worse' to avoid value judgment."
+      term: "Typing speed",
+      label: "What is typing speed?",
+      short: "Typing speed",
+      description: "How fast you type in words per minute. We only compare this against your own normal pace, never against coworkers."
     },
     deviationScore: {
-      term: "Deviation bands",
-      label: "How are deviation bands calculated?",
-      short: "Behavioral deviation bands",
-      description: "How today's rhythm compares with your personal 14-day baseline: Typical (neutral), A bit different (amber), or Much different (soft rose)."
+      term: "Daily rhythm comparison",
+      label: "How are differences shown?",
+      short: "Daily rhythm comparison",
+      description: "How today compares with your usual rhythm: Typical (normal), A bit different, or Much different."
     },
     temporalNN: {
-      term: "Temporal neural network",
-      label: "How does the ML model predict?",
-      short: "Bidirectional GRU neural network",
-      description: "A deep learning temporal neural network that tracks rhythm sequences across multiple working days to detect chronic burnout risks 5+ working days in advance of acute exhaustion."
+      term: "Early warning system",
+      label: "How does WorkSense spot early warning signs?",
+      short: "Early warning system",
+      description: "A smart pattern recognition system that looks at gentle changes in your work habits over several days to spot heavy fatigue before it happens, giving you time to recover."
     },
     shiftMidpoint: {
-      term: "Shift midpoint",
-      label: "What is the shift midpoint rule?",
-      short: "Shift midpoint rule",
-      description: "The midpoint of your scheduled workday (defaults to 1:00 PM). WorkSense unlocks the daily check-in at this time so that your self-reported score accurately reflects your workday experience."
+      term: "Midday check-in unlock",
+      label: "When does the check-in unlock?",
+      short: "Midday check-in unlock",
+      description: "The daily check-in unlocks at 1:00 PM so your responses accurately reflect your workday experience."
     },
     quietHours: {
       term: "Quiet hours",
       label: "What are quiet hours?",
       short: "Quiet hours schedule",
-      description: "A scheduled daily window (such as 12:30 PM - 1:30 PM lunch, or after 7:00 PM) during which desktop nudges and non-urgent prompts are suppressed to protect focus and rest."
+      description: "A scheduled window (such as 12:30 PM - 1:30 PM lunch, or after 7:00 PM) where desktop suggestions are silenced to protect your focus and rest."
     }
   },
 
@@ -138,15 +150,15 @@ window.WORK_SENSE_STRINGS = {
     greetingEvening: "Good evening",
     greetingMorning: "Good morning",
     greetingAfternoon: "Good afternoon",
-    liveDotLabel: "Live data",
-    outlookTitle: "Your next 5 working days",
+    liveDotLabel: "Live app",
+    outlookTitle: "Your 5-day energy outlook",
     howWorkedOut: "How is this worked out?",
     confidenceLabel: "Confidence",
     riskIndexLabel: "Risk index",
-    contributorsTitle: "What's behind this",
-    topContributorsSubtitle: "Ranked factors shaping your current outlook",
+    contributorsTitle: "What's shaping your outlook",
+    topContributorsSubtitle: "Key factors shaping your current energy outlook",
     comparesTitle: "How today compares with your usual",
-    comparesSubtitle: "Top 3 deviating metrics against your personal 14-day baseline",
+    comparesSubtitle: "Top 3 noticeable differences compared to your normal habits",
     suggestionTitle: "Suggestion for you",
     sevenDayTitle: "Your last 7 days",
     onlyYouCanSee: "Only you can see this page.",
@@ -155,8 +167,8 @@ window.WORK_SENSE_STRINGS = {
   },
 
   metrics: {
-    title: "Metrics & telemetry",
-    subtitle: "Rhythms, rest pauses, typing pace, and pointer dynamics",
+    title: "Work habits & metrics",
+    subtitle: "Focus stretches, rest breaks, typing pace, and mouse activity",
     tabs: {
       rhythm: "Work rhythm",
       afterHours: "After-hours",
@@ -170,19 +182,19 @@ window.WORK_SENSE_STRINGS = {
     exportCsvButton: "Export CSV",
     tableColumns: {
       date: "Date",
-      stretch: "Longest stretch",
-      lunch: "Midday break",
-      afterHours: "After-hours msgs",
+      stretch: "Longest stretch without break",
+      lunch: "Lunch break",
+      afterHours: "Late-day messages",
       wpm: "Typing speed",
-      corrections: "Corrections",
-      checkin: "Check-in"
+      corrections: "Backspaces & edits",
+      checkin: "Daily score"
     }
   },
 
   checkin: {
     cardTitle: "How was your day?",
     pageTitle: "Day Check-in",
-    pageSubtitle: "Scientific Burnout Assessment Tool (BAT-12) telemetry history",
+    pageSubtitle: "Your daily 2-minute check-in history",
     lockedBefore1Pm: "Opens at 1:00 PM so it reflects your day.",
     doneToday: "Done today ✓",
     usualScorePrefix: "Your usual check-in score",
@@ -199,7 +211,7 @@ window.WORK_SENSE_STRINGS = {
 
   suggestions: {
     title: "Suggestions for you",
-    subtitle: "Personalized desktop recovery prompts based on your work rhythm deviations",
+    subtitle: "Helpful desktop recovery tips based on your work rhythm",
     tabs: {
       active: "Active suggestions",
       past: "History",
@@ -219,12 +231,12 @@ window.WORK_SENSE_STRINGS = {
 
   privacy: {
     title: "Privacy & Data",
-    subtitle: "Strict zero-identification architecture, local workstation storage, and data controls",
-    whatWeCollectTitle: "What we collect",
-    whatWeCollectSubtitle: "Timings and rhythm counts only — never what you type or the content of messages",
+    subtitle: "100% private design, local storage on your machine, and complete data controls",
+    whatWeCollectTitle: "What we track",
+    whatWeCollectSubtitle: "Timing intervals and rhythm counts only — never what you type, write, or see on screen",
     whoSeesWhatTitle: "Who sees what",
     youSeeEverything: "You: everything",
-    managerSeesAggregates: "Your manager: team-level summaries only, never your individual data",
+    managerSeesAggregates: "Your manager: overall team summaries only, never your individual data",
     pauseTracking: "Pause tracking",
     exportData: "Export my data",
     deleteData: "Delete my data"
@@ -233,15 +245,15 @@ window.WORK_SENSE_STRINGS = {
   manager: {
     overview: {
       title: "Team overview",
-      subtitle: "Aggregated organizational workload, strain distribution, and participation trends.",
-      teamStatusMixTitle: "Team status mix",
+      subtitle: "Overall team energy, workload balance, and participation trends.",
+      teamStatusMixTitle: "Team energy status mix",
       changeVsLastWeekTitle: "Change vs last week",
       checkinParticipationTitle: "Check-in participation",
-      fourWeekOutlookTitle: "4-week strain outlook",
-      shareElevatedTitle: "Share of employees in Strained or Overloaded",
-      benchmarkLabel: "20% organizational benchmark",
+      fourWeekOutlookTitle: "4-week team pressure trend",
+      shareElevatedTitle: "Share of team facing heavy pressure",
+      benchmarkLabel: "20% healthy benchmark",
       insufficientGroupTitle: "Not enough people to show this group",
-      insufficientGroupSubtitle: "To protect individual psychological safety, groups with fewer than 5 members cannot be displayed."
+      insufficientGroupSubtitle: "To protect individual privacy, groups with fewer than 5 members are hidden."
     },
     teams: {
       title: "Teams and departments",
@@ -252,38 +264,38 @@ window.WORK_SENSE_STRINGS = {
       viewOverviewButton: "View overview →"
     },
     drivers: {
-      title: "Behavioral drivers",
-      subtitle: "Broad categories only. Aggregate workload patterns contributing to team strain.",
-      categoriesPrivacyCallout: "Broad categories privacy guarantee: To ensure zero individual tracking, WorkSense aggregates telemetry into four systemic work dimensions. No keystrokes, message texts, or individual names are ever inspected or stored."
+      title: "Work pressure factors",
+      subtitle: "Broad categories only. Key work habits contributing to team pressure.",
+      categoriesPrivacyCallout: "Privacy guarantee: To ensure no individual is ever tracked, WorkSense groups work patterns into four broad categories. No keystrokes, messages, or names are ever recorded or displayed."
     },
     checkins: {
-      title: "Daily check-in telemetry",
-      subtitle: "Aggregate Burnout Assessment Tool (BAT-12) participation, score distribution, and clinical burnout domains.",
-      scoreDistributionTitle: "Aggregate check-in score distribution",
-      domainBreakdownTitle: "BAT-12 domain breakdown"
+      title: "Daily check-in summaries",
+      subtitle: "Overall check-in participation, score distribution, and wellbeing categories.",
+      scoreDistributionTitle: "Overall check-in score distribution",
+      domainBreakdownTitle: "Wellbeing categories"
     },
     actions: {
-      title: "Suggested interventions & action tracker",
-      subtitle: "Targeted organizational initiatives, real-time status tracker, and before/after status mix evaluation.",
-      beforeAfterTitle: "Before / after intervention status mix",
-      suggestedInterventionsTitle: "Suggested organizational interventions",
+      title: "Suggested team actions & tracker",
+      subtitle: "Team-wide initiatives, status tracker, and before/after energy comparison.",
+      beforeAfterTitle: "Before / after team status",
+      suggestedInterventionsTitle: "Suggested team actions",
       updateTrackerLabel: "Update tracker:"
     },
     reports: {
-      title: "Stress level reports & summaries",
-      subtitle: "Scheduled dispatches and on-demand PDF/email summaries of team stress levels.",
-      generateTitle: "Generate team stress summary",
+      title: "Team wellbeing reports",
+      subtitle: "Scheduled and on-demand summaries of overall team energy and pressure.",
+      generateTitle: "Create team wellbeing summary",
       generateButton: "Generate report",
       generatingButton: "Generating report...",
-      scheduledTitle: "Scheduled email and PDF dispatches",
-      archiveTitle: "Past generated stress summaries"
+      scheduledTitle: "Scheduled email and PDF summaries",
+      archiveTitle: "Past summaries"
     },
     admin: {
-      title: "Admin & organizational settings",
-      subtitle: "Working hours and holidays, team setup, and an audit log of who viewed what and when.",
-      workingHoursTitle: "Working hours & rhythm thresholds",
+      title: "Admin & workspace settings",
+      subtitle: "Standard working hours, holidays, team setup, and an audit log of who viewed what and when.",
+      workingHoursTitle: "Standard working hours",
       holidaysTitle: "Observed holidays 2026",
-      teamSetupTitle: "Team setup & privacy threshold status",
+      teamSetupTitle: "Teams & privacy protection status",
       auditLogTitle: "Access audit log",
       searchPlaceholder: "Search audit events..."
     }
@@ -292,23 +304,23 @@ window.WORK_SENSE_STRINGS = {
   states: {
     loading: {
       title: "Loading data...",
-      description: "Retrieving telemetry and evaluating rhythm patterns."
+      description: "Retrieving your recent work rhythm data."
     },
     empty: {
       defaultTitle: "No data available",
       defaultDescription: "There is no recorded information for this section yet.",
       noActivityToday: "No activity recorded today",
-      noActivityDescription: "We haven't received telemetry for this workday yet. Data will appear once active desktop sessions are detected.",
+      noActivityDescription: "We haven't recorded activity for today yet. Data will appear once you begin working.",
       noPastReports: "No past reports found",
-      noPastReportsDescription: "Generate your first on-demand report using the controls above.",
+      noPastReportsDescription: "Generate your first summary using the button above.",
       noAuditLogs: "No matching audit events",
       noAuditLogsDescription: "Try adjusting your search query or check back later."
     },
     error: {
-      title: "Unable to load telemetry",
-      description: "An error occurred while connecting to the local WorkSense bridge server.",
+      title: "Unable to load data",
+      description: "Could not connect to the local WorkSense background app.",
       retryButton: "Try again",
-      offlineTip: "Please ensure desktop.py or start_worksense.bat is active on your workstation."
+      offlineTip: "Please ensure desktop.py or start_worksense.bat is active on your computer."
     }
   }
 };
