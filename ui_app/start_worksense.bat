@@ -1,31 +1,52 @@
 @echo off
-@chcp 65001 > nul
 title WorkSense - Early-Warning Burnout Prevention
 cls
 
 echo ======================================================================
-echo    _       __           __   _____                      
-echo   ^| ^|     / /___  _____/ /__/ ___/___  ____  ________ 
-echo   ^| ^| /^| / / __ \/ ___/ //_/\__ \/ _ \/ __ \/ ___/ _ \
-echo   ^| ^|/ ^|/ / /_/ / /  / ,^<  ___/ /  __/ / / (__  )  __/
-echo   ^|__/^|__/\____/_/  /_/^|_^|/____/\___/_/ /_/____/\___/ 
-echo.
-echo   FLAME University Research Prototype -- Burnout Prevention Platform
+echo   WorkSense - Early-Warning Burnout Prevention Platform
+echo   FLAME University Research Prototype
 echo ======================================================================
 echo.
 
-cd /d "%~dp0"
+set SCRIPT_DIR=%~dp0
+set TARGET_DIR=%SCRIPT_DIR%
 
-set PYTHON="..\agent\.venv\Scripts\python.exe"
-if not exist %PYTHON% (
-    echo [ERROR] Virtual environment Python not found at:
-    echo         agent\.venv\Scripts\python.exe
-    echo.
-    echo Please ensure the agent venv is set up.
-    echo.
+:: Detect python executable across common paths
+set PYTHON=
+if exist "%SCRIPT_DIR%..\agent\.venv\Scripts\python.exe" (
+    set PYTHON="%SCRIPT_DIR%..\agent\.venv\Scripts\python.exe"
+    set TARGET_DIR=%SCRIPT_DIR%
+) else if exist "%SCRIPT_DIR%agent\.venv\Scripts\python.exe" (
+    set PYTHON="%SCRIPT_DIR%agent\.venv\Scripts\python.exe"
+    set TARGET_DIR=%SCRIPT_DIR%ui_app\
+) else if exist "D:\FLAME_UG\UG4\IMP_Data\employee-data-collector\agent\.venv\Scripts\python.exe" (
+    set PYTHON="D:\FLAME_UG\UG4\IMP_Data\employee-data-collector\agent\.venv\Scripts\python.exe"
+    set TARGET_DIR=D:\FLAME_UG\UG4\IMP_Data\employee-data-collector\ui_app\
+) else (
+    set PYTHON=python
+)
+
+:: Detect desktop.py
+set DESKTOP_SCRIPT=
+if exist "%TARGET_DIR%desktop.py" (
+    set DESKTOP_SCRIPT="%TARGET_DIR%desktop.py"
+) else if exist "%SCRIPT_DIR%desktop.py" (
+    set DESKTOP_SCRIPT="%SCRIPT_DIR%desktop.py"
+) else if exist "D:\FLAME_UG\UG4\IMP_Data\employee-data-collector\ui_app\desktop.py" (
+    set DESKTOP_SCRIPT="D:\FLAME_UG\UG4\IMP_Data\employee-data-collector\ui_app\desktop.py"
+)
+
+if "%DESKTOP_SCRIPT%"=="" (
+    echo [ERROR] Could not find desktop.py.
+    echo Please make sure WorkSense files are in place.
     pause
     exit /b 1
 )
 
-%PYTHON% desktop.py
-pause
+cd /d "%TARGET_DIR%"
+%PYTHON% %DESKTOP_SCRIPT%
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo [ERROR] WorkSense exited with error code %ERRORLEVEL%.
+    pause
+)

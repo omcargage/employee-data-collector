@@ -58,36 +58,42 @@ def main():
     print("=" * 66)
     print()
 
-    # Step 1: Load neural model & start in-process server
-    print("[1/3] Loading neural network, baseline models & master dataset...", flush=True)
-    t0 = time.time()
+    server = None
+    server_thread = None
 
-    import uvicorn
-    from server import app, load_application_state
+    # Step 1: Check if server is already running or start in-process
+    if is_server_ready():
+        print("[1/3] WorkSense engine is already running on port 8000.", flush=True)
+    else:
+        print("[1/3] Loading neural network, baseline models & master dataset...", flush=True)
+        t0 = time.time()
 
-    # Explicitly load state with progress feedback
-    load_application_state()
-    print(f"      Engine initialized successfully in {time.time() - t0:.1f}s.")
+        import uvicorn
+        from server import app, load_application_state
 
-    # Step 2: Start Uvicorn in background thread
-    print("[2/3] Starting local WorkSense server on port 8000...", flush=True)
-    config = uvicorn.Config(
-        app=app,
-        host=SERVER_HOST,
-        port=SERVER_PORT,
-        log_level="warning",
-        access_log=False,
-    )
-    server = uvicorn.Server(config)
-    server_thread = threading.Thread(target=server.run, daemon=True)
-    server_thread.start()
+        # Explicitly load state with progress feedback
+        load_application_state()
+        print(f"      Engine initialized successfully in {time.time() - t0:.1f}s.")
 
-    # Wait for server ready (usually < 1 second since app is already initialized)
-    for _ in range(20):
-        time.sleep(0.3)
-        if is_server_ready():
-            break
-    print("      Server is ready and connected to ML pipeline.")
+        # Step 2: Start Uvicorn in background thread
+        print("[2/3] Starting local WorkSense server on port 8000...", flush=True)
+        config = uvicorn.Config(
+            app=app,
+            host=SERVER_HOST,
+            port=SERVER_PORT,
+            log_level="warning",
+            access_log=False,
+        )
+        server = uvicorn.Server(config)
+        server_thread = threading.Thread(target=server.run, daemon=True)
+        server_thread.start()
+
+        # Wait for server ready (usually < 1 second since app is already initialized)
+        for _ in range(25):
+            time.sleep(0.3)
+            if is_server_ready():
+                break
+        print("      Server is ready and connected to ML pipeline.")
 
     # Step 3: Launch standalone window
     print("[3/3] Opening WorkSense Desktop Application window...", flush=True)
@@ -118,7 +124,8 @@ def main():
                 text_select=True,
             )
             webview.start()
-            server.should_exit = True
+            if server:
+                server.should_exit = True
             return
         except Exception:
             print("      Opening in default browser container...")
@@ -136,12 +143,15 @@ def main():
         if window_proc:
             window_proc.wait()
             print("WorkSense window closed.")
-        else:
+        elif server_thread:
             server_thread.join()
+        else:
+            time.sleep(2)
     except KeyboardInterrupt:
         print("\nStopping WorkSense...")
     finally:
-        server.should_exit = True
+        if server:
+            server.should_exit = True
         print("Shutdown complete.")
 
 

@@ -1087,7 +1087,7 @@
           <OutlookOrCalibrationCard data={data} />
 
           {/* (3) DAY CHECK-IN CARD */}
-          <CheckInCard summary={bat12_summary} onOpenModal={onOpenBatModal} />
+          <CheckInCard summary={bat12_summary} onOpenModal={onOpenBatModal} isTrackingPaused={data?.tracking_paused} />
 
           {/* (4) WHAT'S BEHIND THIS (Ranked Biggest/Medium/Small, No Percentages) */}
           <WhatsBehindThis primaryDrivers={primary_drivers} />
@@ -1521,7 +1521,7 @@
           </div>
 
           {/* Today's Check-in Card (How was your day?) */}
-          <CheckInCard summary={batSummary} onOpenModal={onOpenModal} />
+          <CheckInCard summary={batSummary} onOpenModal={onOpenModal} isTrackingPaused={data?.tracking_paused} />
 
           {/* Score History Line Chart & User's Usual Range */}
           <div className="ws-card p-6">
@@ -1959,6 +1959,826 @@
     }
 
     // =========================================================================
+    // SUGGESTIONS PAGE (Route /suggestions)
+    // "Suggestions for you": Active & past nudge cards (break, midday break,
+    // wrap up for the day, protect focus time), each with Done / Snooze / Not helpful,
+    // plus preferences (frequency, quiet hours, mute for today), and desktop push notifications.
+    // =========================================================================
+    function EmployeeSuggestionsPageView({ data }) {
+      const [nudges, setNudges] = useState([]);
+      const [pastNudges, setPastNudges] = useState([]);
+      const [preferences, setPreferences] = useState({
+        frequency: "balanced",
+        quiet_hours_start: "13:00",
+        quiet_hours_end: "14:00",
+        mute_today: false,
+      });
+      const [notificationPermission, setNotificationPermission] = useState(
+        typeof window !== "undefined" && "Notification" in window ? Notification.permission : "default"
+      );
+      const [testNotificationSent, setTestNotificationSent] = useState(false);
+      const [toastNotice, setToastNotice] = useState(null);
+
+      // Fetch suggestions and preferences
+      const loadSuggestions = () => {
+        fetch("/api/employee/suggestions?employee_id=" + (data?.employee_id || "EMP_089"))
+          .then(res => res.json())
+          .then(resData => {
+            setNudges(resData.active_suggestions || []);
+            setPastNudges(resData.past_suggestions || []);
+            if (resData.preferences) setPreferences(resData.preferences);
+          })
+          .catch(err => console.error("Error loading suggestions:", err));
+      };
+
+      useEffect(() => {
+        loadSuggestions();
+      }, [data]);
+
+      // Handle Done / Snooze / Not Helpful action
+      const handleAction = (nudgeId, actionType) => {
+        fetch("/api/employee/suggestions/action", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nudge_id: nudgeId, action: actionType })
+        })
+          .then(res => res.json())
+          .then(() => {
+            const actionWord = actionType === "done" ? "marked as Done ✓" : actionType === "snooze" ? "snoozed for 30m" : "dismissed";
+            setToastNotice(`Suggestion ${actionWord}`);
+            setTimeout(() => setToastNotice(null), 3000);
+            loadSuggestions();
+          })
+          .catch(err => console.error("Error updating suggestion:", err));
+      };
+
+      // Handle Preferences update
+      const handlePrefChange = (key, val) => {
+        const next = { ...preferences, [key]: val };
+        setPreferences(next);
+        fetch("/api/employee/suggestions/preferences", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(next)
+        }).catch(err => console.error("Error saving preferences:", err));
+      };
+
+      // Desktop Push Notification Trigger
+      const requestNotificationPermission = () => {
+        if ("Notification" in window) {
+          Notification.requestPermission().then(permission => {
+            setNotificationPermission(permission);
+            if (permission === "granted") {
+              sendLiveDesktopNotification(
+                "WorkSense — Desktop Notifications Enabled",
+                "You will now receive timely recovery suggestions and boundary alerts directly on your desktop."
+              );
+            }
+          });
+        }
+      };
+
+      const sendLiveDesktopNotification = (title, body) => {
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification(title, {
+            body: body,
+            icon: "favicon.ico",
+          });
+        }
+        setTestNotificationSent(true);
+        setTimeout(() => setTestNotificationSent(false), 4000);
+      };
+
+      const handleTriggerTestNotification = () => {
+        if ("Notification" in window && Notification.permission !== "granted") {
+          requestNotificationPermission();
+          return;
+        }
+        sendLiveDesktopNotification(
+          "WorkSense — Micro-break Suggestion",
+          "Continuous stretch of 95 mins detected. Step away from your desk for 5 minutes!"
+        );
+      };
+
+      return (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-[var(--primary)] uppercase tracking-wider">
+                  Behavioral Guidance
+                </span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] mt-0.5">
+                Suggestions for you
+              </h2>
+              <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                Actionable micro-guidance based on your daily work rhythm, stretch lengths, and recovery intervals.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] bg-[var(--bg-card)] px-3 py-1.5 rounded-full border border-[var(--border-subtle)] shadow-xs self-start sm:self-auto">
+              <svg className="w-3.5 h-3.5 text-[var(--text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              <span>Only you can see this page.</span>
+            </div>
+          </div>
+
+          {/* Feedback Toast Notice */}
+          {toastNotice && (
+            <div className="p-3 rounded-xl bg-[var(--primary-subtle)] border border-[var(--primary-border)] text-xs font-semibold text-[var(--primary)] animate-fade-in flex items-center justify-between">
+              <span>{toastNotice}</span>
+              <button onClick={() => setToastNotice(null)} className="font-bold ml-2">&times;</button>
+            </div>
+          )}
+
+          {/* Desktop Push Notification Banner */}
+          <div className="ws-card p-5 border-l-4" style={{ borderLeftColor: "var(--primary)" }}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[var(--primary)]">
+                    Desktop push alerts
+                  </span>
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                      notificationPermission === "granted"
+                        ? "bg-[var(--status-steady-bg)] text-[var(--status-steady)]"
+                        : "bg-[var(--bg-card-subtle)] text-[var(--text-muted)]"
+                    }`}
+                  >
+                    {notificationPermission === "granted" ? "Enabled on desktop ✓" : "Permission needed"}
+                  </span>
+                </div>
+                <h4 className="text-sm font-bold text-[var(--text-primary)]">
+                  Receive suggestions as native Windows notifications
+                </h4>
+                <p className="text-xs text-[var(--text-secondary)] leading-relaxed max-w-xl">
+                  WorkSense can pop desktop toast alerts for 90-minute stretch warnings, midday recovery reminders, and end-of-day check-in prompts directly into your Windows Action Center.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                {notificationPermission !== "granted" ? (
+                  <button
+                    type="button"
+                    onClick={requestNotificationPermission}
+                    className="ws-btn-primary text-xs py-2 px-4 shadow-xs"
+                  >
+                    Enable desktop alerts
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleTriggerTestNotification}
+                    className="ws-btn-secondary text-xs py-2 px-4 flex items-center gap-1.5"
+                    title="Send a live test notification to Windows"
+                  >
+                    <svg className="w-3.5 h-3.5 text-[var(--primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                    <span>{testNotificationSent ? "Toast sent! ✓" : "Test desktop toast"}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Preferences: Frequency, Quiet Hours, Mute for today */}
+          <div className="ws-card p-6">
+            <h3 className="text-base font-bold text-[var(--text-primary)] mb-1">
+              Preferences
+            </h3>
+            <p className="text-xs text-[var(--text-secondary)] mb-4">
+              Configure how often suggestions appear and set protected quiet periods.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-1 border-t border-[var(--border-subtle)]">
+              {/* Frequency Segmented Control */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-[var(--text-primary)] block">
+                  Notification frequency
+                </label>
+                <div className="flex items-center bg-[var(--bg-card-subtle)] p-1 rounded-xl border border-[var(--border-subtle)]">
+                  {[
+                    { id: "minimal", label: "Minimal" },
+                    { id: "balanced", label: "Balanced" },
+                    { id: "frequent", label: "Frequent" },
+                  ].map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => handlePrefChange("frequency", f.id)}
+                      className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all ${
+                        preferences.frequency === f.id
+                          ? "bg-[var(--primary)] text-white shadow-xs"
+                          : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                      }`}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+                <span className="text-[11px] text-[var(--text-muted)] block">
+                  {preferences.frequency === "minimal"
+                    ? "Critical alerts only (> 90m stretches)"
+                    : preferences.frequency === "frequent"
+                    ? "All rhythm, break, and evening suggestions"
+                    : "Default: 2 to 3 gentle nudges spaced across day"}
+                </span>
+              </div>
+
+              {/* Quiet Hours */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-[var(--text-primary)] block">
+                  Quiet hours (no alerts)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="time"
+                    value={preferences.quiet_hours_start}
+                    onChange={(e) => handlePrefChange("quiet_hours_start", e.target.value)}
+                    className="text-xs bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-lg px-2.5 py-1.5 text-[var(--text-primary)] w-full"
+                  />
+                  <span className="text-xs text-[var(--text-muted)]">to</span>
+                  <input
+                    type="time"
+                    value={preferences.quiet_hours_end}
+                    onChange={(e) => handlePrefChange("quiet_hours_end", e.target.value)}
+                    className="text-xs bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-lg px-2.5 py-1.5 text-[var(--text-primary)] w-full"
+                  />
+                </div>
+                <span className="text-[11px] text-[var(--text-muted)] block">
+                  Silences desktop alerts during lunch or designated quiet blocks.
+                </span>
+              </div>
+
+              {/* Mute for Today Switch */}
+              <div className="space-y-2 flex flex-col justify-between">
+                <label className="text-xs font-semibold text-[var(--text-primary)] block">
+                  Mute for today
+                </label>
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)]">
+                  <div className="text-xs">
+                    <span className="font-semibold text-[var(--text-primary)] block">
+                      {preferences.mute_today ? "Muted for today" : "Active today"}
+                    </span>
+                    <span className="text-[11px] text-[var(--text-muted)]">
+                      {preferences.mute_today ? "Resumes tomorrow morning" : "Suggestions enabled"}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handlePrefChange("mute_today", !preferences.mute_today)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      preferences.mute_today ? "bg-[var(--primary)]" : "bg-[var(--border-strong)]"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        preferences.mute_today ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+                <span className="text-[11px] text-[var(--text-muted)] block">
+                  Temporarily pause all suggestions until midnight.
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Active Suggestions List */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-[var(--text-primary)]">
+                Active suggestions ({nudges.length})
+              </h3>
+              <span className="text-xs text-[var(--text-muted)]">
+                Click Done, Snooze, or Not helpful to respond
+              </span>
+            </div>
+
+            {nudges.length === 0 ? (
+              <div className="ws-card p-8 text-center text-xs text-[var(--text-secondary)]">
+                <svg className="w-8 h-8 mx-auto text-[var(--status-steady)] mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="font-bold text-sm text-[var(--text-primary)]">All clear! No active suggestions right now.</div>
+                <p className="mt-1">Your work rhythm and break patterns are balanced. Check back later.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {nudges.map((n) => (
+                  <div
+                    key={n.id}
+                    className="ws-card p-5 flex flex-col justify-between border-l-4 transition-all hover:border-[var(--primary)]"
+                    style={{
+                      borderLeftColor:
+                        n.type === "break"
+                          ? "var(--status-strained)"
+                          : n.type === "wrap_up"
+                          ? "var(--status-overloaded)"
+                          : "var(--primary)"
+                    }}
+                  >
+                    <div>
+                      {/* Category & Time */}
+                      <div className="flex items-center justify-between text-[11px] mb-2">
+                        <span className="px-2 py-0.5 rounded-full font-semibold bg-[var(--bg-card-subtle)] text-[var(--primary)]">
+                          {n.category}
+                        </span>
+                        <span className="text-[var(--text-muted)]">{n.time_label}</span>
+                      </div>
+
+                      {/* Title & Body */}
+                      <h4 className="text-sm font-bold text-[var(--text-primary)] mb-1">
+                        {n.title}
+                      </h4>
+                      <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                        {n.body}
+                      </p>
+                    </div>
+
+                    {/* Action Buttons: Done / Snooze / Not helpful */}
+                    <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleAction(n.id, "done")}
+                          className="ws-btn-primary text-xs py-1.5 px-3 flex items-center gap-1 shadow-xs"
+                          title="Mark this action as completed"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>Done</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleAction(n.id, "snooze")}
+                          className="ws-btn-secondary text-xs py-1.5 px-3"
+                          title="Snooze for 30 minutes"
+                        >
+                          Snooze (30m)
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleAction(n.id, "not_helpful")}
+                        className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline px-1 py-1"
+                        title="Dismiss and give feedback"
+                      >
+                        Not helpful
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Past Suggestions Section */}
+          {pastNudges.length > 0 && (
+            <div className="ws-card p-6">
+              <h3 className="text-base font-bold text-[var(--text-primary)] mb-1">
+                Resolved suggestions
+              </h3>
+              <p className="text-xs text-[var(--text-secondary)] mb-4">
+                Suggestions you marked Done, Snoozed, or Dismissed earlier today.
+              </p>
+
+              <div className="divide-y divide-[var(--border-subtle)]">
+                {pastNudges.map((pn) => {
+                  const isDone = pn.action_taken === "done";
+                  const isSnooze = pn.action_taken === "snooze";
+
+                  return (
+                    <div key={pn.id} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-4 text-xs">
+                      <div className="space-y-0.5">
+                        <div className="font-semibold text-[var(--text-primary)]">{pn.title}</div>
+                        <div className="text-[11px] text-[var(--text-secondary)] line-clamp-1">{pn.body}</div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                            isDone
+                              ? "bg-[var(--status-steady-bg)] text-[var(--status-steady)]"
+                              : isSnooze
+                              ? "bg-[var(--status-stretched-bg)] text-[var(--status-stretched)]"
+                              : "bg-[var(--bg-card-subtle)] text-[var(--text-muted)]"
+                          }`}
+                        >
+                          {isDone ? "Done ✓" : isSnooze ? "Snoozed" : "Not helpful"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleAction(pn.id, "reopen")}
+                          className="text-[11px] text-[var(--primary)] hover:underline"
+                        >
+                          Restore
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // =========================================================================
+    // PRIVACY & DATA PAGE (Route /privacy)
+    // 1. Plain "What we collect" list (timings and counts only, never content)
+    // 2. "Who sees what" panel (you: everything; manager: team-level summaries)
+    // 3. Pause tracking, Export my data, Delete my data
+    // =========================================================================
+    function EmployeePrivacyPageView({ data, onTrackingPauseToggle }) {
+      const [isPaused, setIsPaused] = useState(data?.tracking_paused || false);
+      const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+      const [actionNotice, setActionNotice] = useState(null);
+
+      useEffect(() => {
+        if (data?.tracking_paused !== undefined) {
+          setIsPaused(data.tracking_paused);
+        }
+      }, [data]);
+
+      const handlePauseClick = () => {
+        const nextState = !isPaused;
+        setIsPaused(nextState);
+        if (onTrackingPauseToggle) {
+          onTrackingPauseToggle(nextState);
+        }
+        setActionNotice(nextState ? "Tracking paused for 1 hour. Day Check-in unlocked." : "Tracking resumed.");
+        setTimeout(() => setActionNotice(null), 3500);
+      };
+
+      const handleExportData = () => {
+        fetch("/api/privacy/export?employee_id=" + (data?.employee_id || "EMP_089"))
+          .then(res => res.json())
+          .then(exportData => {
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `worksense_my_data_export_${data?.employee_id || "EMP_089"}.json`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setActionNotice("Your complete personal data export has been downloaded.");
+            setTimeout(() => setActionNotice(null), 3500);
+          })
+          .catch(err => console.error("Error exporting data:", err));
+      };
+
+      const handleDeleteData = () => {
+        fetch("/api/privacy/delete?employee_id=" + (data?.employee_id || "EMP_089"), { method: "POST" })
+          .then(res => res.json())
+          .then(() => {
+            setDeleteModalOpen(false);
+            setActionNotice("Personal telemetry and baseline records have been deleted.");
+            setTimeout(() => setActionNotice(null), 3500);
+          })
+          .catch(err => console.error("Error deleting data:", err));
+      };
+
+      return (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-[var(--status-steady)] uppercase tracking-wider">
+                  Zero-Identification Architecture
+                </span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] mt-0.5">
+                Privacy & data
+              </h2>
+              <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                Built from the ground up to protect employee trust. Your desktop telemetry stays on your local machine.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] bg-[var(--bg-card)] px-3 py-1.5 rounded-full border border-[var(--border-subtle)] shadow-xs self-start sm:self-auto">
+              <svg className="w-3.5 h-3.5 text-[var(--status-steady)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              <span>Zero-Identification Protocol Active</span>
+            </div>
+          </div>
+
+          {/* Action Feedback Banner */}
+          {actionNotice && (
+            <div className="p-3 rounded-xl bg-[var(--primary-subtle)] border border-[var(--primary-border)] text-xs font-semibold text-[var(--primary)] animate-fade-in flex items-center justify-between">
+              <span>{actionNotice}</span>
+              <button onClick={() => setActionNotice(null)} className="font-bold ml-2">&times;</button>
+            </div>
+          )}
+
+          {/* Action Controls Bar: Pause Tracking, Export, Delete */}
+          <div className="ws-card p-6">
+            <h3 className="text-base font-bold text-[var(--text-primary)] mb-1">
+              Data controls
+            </h3>
+            <p className="text-xs text-[var(--text-secondary)] mb-4">
+              Direct controls over your local agent, active monitoring, and saved history.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+              {/* Pause Tracking */}
+              <div className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-bold text-[var(--text-primary)]">Tracking status</span>
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                        isPaused
+                          ? "bg-[var(--status-stretched-bg)] text-[var(--status-stretched)]"
+                          : "bg-[var(--status-steady-bg)] text-[var(--status-steady)]"
+                      }`}
+                    >
+                      {isPaused ? "Paused" : "Active"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+                    Temporarily pause session tracking. Day Check-in unlocks automatically.
+                  </p>
+                </div>
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={handlePauseClick}
+                    className={`w-full py-2 px-3 rounded-xl text-xs font-semibold transition-all shadow-xs ${
+                      isPaused
+                        ? "bg-[var(--primary)] text-white font-bold"
+                        : "ws-btn-secondary"
+                    }`}
+                  >
+                    {isPaused ? "Resume tracking" : "Pause tracking (1 hour)"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Export Data */}
+              <div className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-bold text-[var(--text-primary)]">Export my data</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--bg-card-subtle)] text-[var(--text-muted)] font-medium">
+                      JSON format
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+                    Download an unredacted copy of all your local rollups, baselines, and check-ins.
+                  </p>
+                </div>
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={handleExportData}
+                    className="w-full ws-btn-secondary text-xs py-2 px-3 flex items-center justify-center gap-1.5"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    <span>Export my data</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Delete Data */}
+              <div className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-bold text-[var(--text-primary)]">Delete my data</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--status-overloaded-bg)] text-[var(--status-overloaded)] font-medium">
+                      Permanent
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+                    Permanently wipe your local telemetry history and recalibrate your baseline.
+                  </p>
+                </div>
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteModalOpen(true)}
+                    className="w-full py-2 px-3 rounded-xl text-xs font-semibold text-[var(--status-overloaded)] border border-[var(--status-overloaded-border)] hover:bg-[var(--status-overloaded-bg)] transition-colors"
+                  >
+                    Delete my data
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 1. PLAIN "WHAT WE COLLECT" LIST */}
+          <div className="ws-card p-6">
+            <h3 className="text-base font-bold text-[var(--text-primary)] mb-1">
+              What we collect
+            </h3>
+            <p className="text-xs text-[var(--text-secondary)] mb-4">
+              Timings and aggregate counts only &mdash; never what you type or the content of messages.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Collected Column */}
+              <div className="p-4 rounded-xl bg-[var(--status-steady-bg)] border border-[var(--status-steady-border)] space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-[var(--status-steady)] text-white flex items-center justify-center text-xs font-bold">
+                    &check;
+                  </span>
+                  <span className="text-xs font-bold text-[var(--status-steady)] uppercase tracking-wider">
+                    Collected for early warning
+                  </span>
+                </div>
+                <ul className="text-xs text-[var(--text-primary)] space-y-2.5">
+                  <li className="flex items-start gap-2">
+                    <span className="text-[var(--status-steady)] font-bold">&bull;</span>
+                    <span><strong>Session stretch durations:</strong> Minutes of continuous work before taking a screen break.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[var(--status-steady)] font-bold">&bull;</span>
+                    <span><strong>Break intervals & midday pauses:</strong> Timing and length of lunchtime and short pauses.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[var(--status-steady)] font-bold">&bull;</span>
+                    <span><strong>Interaction pace & corrections:</strong> Gross typing speed (WPM) and backspace correction ratios.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[var(--status-steady)] font-bold">&bull;</span>
+                    <span><strong>After-hours counts:</strong> Number of outgoing communication events sent outside shift hours.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[var(--status-steady)] font-bold">&bull;</span>
+                    <span><strong>Self-reported check-in scores:</strong> Your daily 12-item BAT-12 psychological pulse ratings.</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Never Collected Column */}
+              <div className="p-4 rounded-xl bg-[var(--status-overloaded-bg)] border border-[var(--status-overloaded-border)] space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-[var(--status-overloaded)] text-white flex items-center justify-center text-xs font-bold">
+                    &times;
+                  </span>
+                  <span className="text-xs font-bold text-[var(--status-overloaded)] uppercase tracking-wider">
+                    Strictly never collected or inspected
+                  </span>
+                </div>
+                <ul className="text-xs text-[var(--text-primary)] space-y-2.5">
+                  <li className="flex items-start gap-2">
+                    <span className="text-[var(--status-overloaded)] font-bold">&bull;</span>
+                    <span><strong>Never what you type:</strong> Zero keystroke logging. No individual letters, words, or passwords.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[var(--status-overloaded)] font-bold">&bull;</span>
+                    <span><strong>Never message or email content:</strong> No chat text, emails, subjects, or recipients are ever captured.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[var(--status-overloaded)] font-bold">&bull;</span>
+                    <span><strong>Never application titles or URLs:</strong> We do not inspect browser tabs, websites, or file names.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[var(--status-overloaded)] font-bold">&bull;</span>
+                    <span><strong>Never screen captures or audio:</strong> No screenshots, screen recordings, webcam, or microphone access.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[var(--status-overloaded)] font-bold">&bull;</span>
+                    <span><strong>Never files or work products:</strong> Code, spreadsheets, and documents are never accessed.</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. "WHO SEES WHAT" PANEL */}
+          <div className="ws-card p-6">
+            <h3 className="text-base font-bold text-[var(--text-primary)] mb-1">
+              Who sees what
+            </h3>
+            <p className="text-xs text-[var(--text-secondary)] mb-4">
+              Your data is partitioned by design. Managers only receive aggregated, anonymous team totals.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* You Panel */}
+              <div className="p-5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-[var(--text-primary)]">You (Employee)</span>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-[var(--primary-subtle)] text-[var(--primary)] font-bold">
+                    Full Visibility (100%)
+                  </span>
+                </div>
+                <p className="text-xs text-[var(--text-secondary)]">
+                  Everything about your work pattern is transparent and private to you:
+                </p>
+                <div className="space-y-1.5 text-xs text-[var(--text-secondary)]">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[var(--status-steady)] font-bold">&check;</span>
+                    <span>Exact session stretch times, break lengths, and typing pace</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[var(--status-steady)] font-bold">&check;</span>
+                    <span>Your personal 14-day baseline and deviation comparisons</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[var(--status-steady)] font-bold">&check;</span>
+                    <span>Individual BAT-12 check-in responses and dimension scores</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[var(--status-steady)] font-bold">&check;</span>
+                    <span>Personal recovery suggestions, snoozes, and nudge history</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[var(--status-steady)] font-bold">&check;</span>
+                    <span>Export or delete your local records at any time</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Manager Panel */}
+              <div className="p-5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-[var(--text-primary)]">Your Manager & Leadership</span>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-[var(--bg-card-subtle)] text-[var(--text-muted)] font-bold">
+                    Team-Level Aggregates Only
+                  </span>
+                </div>
+                <p className="text-xs text-[var(--text-secondary)]">
+                  Managers only see anonymized organizational workload summaries:
+                </p>
+                <div className="space-y-1.5 text-xs text-[var(--text-secondary)]">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[var(--primary)] font-bold">&bull;</span>
+                    <span>Department status distribution (e.g. 70% Steady, 20% Stretched, 10% Strained)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[var(--primary)] font-bold">&bull;</span>
+                    <span>30-day team-wide rolling burnout risk trajectory</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[var(--primary)] font-bold">&bull;</span>
+                    <span>Broad organizational drivers (e.g. "Extended work stretches across department")</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[var(--status-overloaded)] font-semibold pt-1 border-t border-[var(--border-subtle)]">
+                    <span>&times;</span>
+                    <span>NEVER your individual name, status, or telemetry</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[var(--status-overloaded)] font-semibold">
+                    <span>&times;</span>
+                    <span>NEVER individual check-in answers or burnout risk rankings</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Delete Confirmation Modal */}
+          {deleteModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop">
+              <div className="ws-card max-w-md w-full p-6 relative shadow-2xl animate-fade-in space-y-4">
+                <div className="w-10 h-10 rounded-full bg-[var(--status-overloaded-bg)] text-[var(--status-overloaded)] flex items-center justify-center text-lg font-bold">
+                  !
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[var(--text-primary)]">Delete all personal data?</h3>
+                  <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
+                    This will permanently delete your personal telemetry rollups, local baseline calibrations, and check-in history. This action cannot be undone.
+                  </p>
+                </div>
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteModalOpen(false)}
+                    className="ws-btn-secondary text-xs py-2 px-4"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteData}
+                    className="py-2 px-4 rounded-xl text-xs font-bold text-white bg-[var(--status-overloaded)] hover:opacity-90 transition-opacity"
+                  >
+                    Yes, delete my data
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // =========================================================================
     // MAIN APPLICATION CONTAINER & SHELL
     // =========================================================================
     function App() {
@@ -2079,13 +2899,26 @@
           });
       };
 
+      const handleToggleTrackingPause = (newPausedState) => {
+        fetch("/api/privacy/pause", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paused: newPausedState, duration_minutes: 60 })
+        })
+          .then(res => res.json())
+          .then(resData => {
+            setEmployeeData(prev => prev ? { ...prev, tracking_paused: resData.tracking_paused } : prev);
+          })
+          .catch(err => console.error("Error setting tracking pause:", err));
+      };
+
       const currentPersona = personas.find(p => p.id === selectedPersonaId) || {
         name: "Priya Nair",
         role: "Backend Engineer",
         department: "Infrastructure"
       };
 
-      // Navigation Items for Employee (Today, Trends & telemetry, Daily check-in, About)
+      // Navigation Items for Employee (Today, Metrics, Day Check-in, Suggestions, Privacy, About)
       const navItems = viewRole === "employee" ? [
         {
           id: "today",
@@ -2111,6 +2944,24 @@
           icon: (
             <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+          )
+        },
+        {
+          id: "suggestions",
+          label: "Suggestions",
+          icon: (
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+          )
+        },
+        {
+          id: "privacy",
+          label: "Privacy & data",
+          icon: (
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
           )
         },
@@ -2289,6 +3140,15 @@
                       <EmployeeCheckInPageView
                         data={employeeData}
                         onOpenModal={handleOpenCheckInModal}
+                      />
+                    ) : (currentRoute === "suggestions" || currentRoute === "/suggestions") ? (
+                      <EmployeeSuggestionsPageView
+                        data={employeeData}
+                      />
+                    ) : (currentRoute === "privacy" || currentRoute === "/privacy") ? (
+                      <EmployeePrivacyPageView
+                        data={employeeData}
+                        onTrackingPauseToggle={handleToggleTrackingPause}
                       />
                     ) : (
                       // Route: about

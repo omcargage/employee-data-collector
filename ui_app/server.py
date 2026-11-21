@@ -70,6 +70,14 @@ DATA_CACHE: Dict[str, Any] = {
     "db": None,
     "personas": [],
     "recent_bat_submissions": {},
+    "tracking_paused": False,
+    "suggestions_preferences": {
+        "frequency": "balanced",
+        "quiet_hours_start": "13:00",
+        "quiet_hours_end": "14:00",
+        "mute_today": False,
+    },
+    "suggestions_history": {},
 }
 
 
@@ -246,6 +254,7 @@ def get_employee_dashboard(
                     "verified_stress_day": False,
                     "raw_responses": None,
                 },
+                "tracking_paused": DATA_CACHE.get("tracking_paused", False),
             }
 
     # 2. DEMO MODE: Read from synchronized master telemetry dataset
@@ -482,6 +491,8 @@ def get_employee_dashboard(
         "baseline_bands": baseline_bands,
         "recovery_nudges": nudges,
         "bat12_summary": bat12_summary,
+        "tracking_paused": DATA_CACHE.get("tracking_paused", False),
+        "suggestions_preferences": DATA_CACHE.get("suggestions_preferences", {}),
     }
 
 
@@ -560,6 +571,157 @@ def submit_bat12_survey(submission: BAT12Submission):
         "score_text": f"{summary.total_bat_score:.1f} out of 5 ({score_desc})",
         "early_checkin": bool(submission.early_checkin),
         "submitted_at": submitted_timestamp,
+    }
+
+
+# =========================================================================
+# SUGGESTIONS & NUDGES (Done / Snooze / Not Helpful & Preferences)
+# =========================================================================
+class SuggestionAction(BaseModel):
+    nudge_id: str
+    action: str  # "done", "snooze", "not_helpful"
+
+
+class SuggestionPreferences(BaseModel):
+    frequency: str = "balanced"  # "minimal", "balanced", "frequent"
+    quiet_hours_start: str = "13:00"
+    quiet_hours_end: str = "14:00"
+    mute_today: bool = False
+
+
+class TrackingPauseRequest(BaseModel):
+    paused: bool
+    duration_mins: Optional[int] = 60
+
+
+@app.get("/api/employee/suggestions")
+def get_employee_suggestions(employee_id: str = "EMP_089"):
+    history = DATA_CACHE.get("suggestions_history", {})
+    prefs = DATA_CACHE.get("suggestions_preferences", {
+        "frequency": "balanced",
+        "quiet_hours_start": "13:00",
+        "quiet_hours_end": "14:00",
+        "mute_today": False,
+    })
+
+    all_nudges = [
+        {
+            "id": "sugg_break_1",
+            "type": "break",
+            "category": "Work rhythm",
+            "icon": "coffee",
+            "title": "Continuous stretch detected",
+            "body": "You have been working continuously for 1h 35m without pausing. Take a 5-minute break away from your screen to rest your eyes and reset cognitive focus.",
+            "time_label": "Active now &bull; Detected 15m ago",
+            "priority": "high",
+        },
+        {
+            "id": "sugg_lunch_1",
+            "type": "midday_break",
+            "category": "Midday recovery",
+            "icon": "sun",
+            "title": "Protect your midday meal",
+            "body": "Your lunch break was only 14 minutes today. Take a 25-minute screen-free lunch away from your desk to recharge afternoon stamina.",
+            "time_label": "Today 1:15 PM",
+            "priority": "medium",
+        },
+        {
+            "id": "sugg_wrapup_1",
+            "type": "wrap_up",
+            "category": "After-hours boundary",
+            "icon": "moon",
+            "title": "Evening boundary alert",
+            "body": "You have sent 7 communication messages after hours. Wrapping up for the evening protects your natural sleep architecture and prevents cognitive fatigue.",
+            "time_label": "Active now &bull; After 7:30 PM",
+            "priority": "high",
+        },
+        {
+            "id": "sugg_focus_1",
+            "type": "protect_focus",
+            "category": "Focus rhythm",
+            "icon": "target",
+            "title": "Protect focus block",
+            "body": "Frequent task switching and choppy focus intervals detected. Consider muting non-essential notifications for an uninterrupted 45-minute deep work session.",
+            "time_label": "Suggested for tomorrow 10:00 AM",
+            "priority": "medium",
+        },
+    ]
+
+    active = []
+    past = []
+    for n in all_nudges:
+        act = history.get(n["id"])
+        if act:
+            past.append({**n, "action_taken": act["action"], "resolved_at": act.get("timestamp")})
+        else:
+            active.append(n)
+
+    return {
+        "active_suggestions": active,
+        "past_suggestions": past,
+        "preferences": prefs,
+        "tracking_paused": DATA_CACHE.get("tracking_paused", False),
+    }
+
+
+@app.post("/api/employee/suggestions/action")
+def update_suggestion_action(req: SuggestionAction):
+    DATA_CACHE["suggestions_history"][req.nudge_id] = {
+        "action": req.action,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    return {"success": True, "nudge_id": req.nudge_id, "action": req.action}
+
+
+@app.post("/api/employee/suggestions/preferences")
+def save_suggestion_preferences(pref: SuggestionPreferences):
+    DATA_CACHE["suggestions_preferences"] = pref.dict()
+    return {"success": True, "preferences": DATA_CACHE["suggestions_preferences"]}
+
+
+@app.post("/api/privacy/pause")
+def set_privacy_pause(req: TrackingPauseRequest):
+    DATA_CACHE["tracking_paused"] = req.paused
+    return {"success": True, "tracking_paused": DATA_CACHE["tracking_paused"]}
+
+
+@app.get("/api/privacy/export")
+def export_employee_privacy_data(employee_id: str = "EMP_089"):
+    df = DATA_CACHE["df"]
+    emp_df = df[df["employee_id"] == employee_id] if df is not None else pd.DataFrame()
+    return {
+        "export_date": datetime.now(timezone.utc).isoformat(),
+        "employee_id": employee_id,
+        "standard": "WorkSense Zero-Identification Framework (WHO-Aligned)",
+        "total_days_recorded": len(emp_df),
+        "telemetry_rollups": emp_df.to_dict(orient="records") if len(emp_df) > 0 else [],
+        "recent_checkins": [v for k, v in DATA_CACHE["recent_bat_submissions"].items() if k.startswith(employee_id)],
+        "privacy_summary": {
+            "what_is_collected": "Timing intervals, duration counts, and self-reported check-in ratings only.",
+            "what_is_never_collected": "No keystroke text, chat content, email bodies, window titles, or screen captures.",
+            "manager_visibility": "Managers only see aggregated department distribution percentages. Zero individual telemetry.",
+        }
+    }
+
+
+@app.post("/api/privacy/delete")
+def delete_employee_privacy_data(employee_id: str = "EMP_089"):
+    keys = [k for k in DATA_CACHE["recent_bat_submissions"] if k.startswith(employee_id)]
+    for k in keys:
+        del DATA_CACHE["recent_bat_submissions"][k]
+    return {
+        "success": True,
+        "message": f"Personal telemetry and baseline records for {employee_id} have been deleted from local storage."
+    }
+
+
+@app.post("/api/notifications/test")
+def trigger_test_notification():
+    return {
+        "success": True,
+        "title": "WorkSense — Suggestions for you",
+        "body": "Continuous stretch of 95 mins detected. Step away from your desk for 5 minutes!",
+        "type": "break",
     }
 
 
