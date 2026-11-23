@@ -1161,7 +1161,7 @@ TEAMS_CONFIG = [
     },
     {
         "id": "design_system",
-        "name": "Design Systems Core (< 5 people)",
+        "name": "Design Systems Core",
         "department": "Design Systems Core",
         "workforce": 3,
         "counts": None,
@@ -1244,8 +1244,8 @@ def get_manager_overview(team: str = Query("all"), date_range: str = Query("4w")
         "delta_count": delta_count,
         "delta_pct": delta_pct,
         "trend": "up" if delta_count > 0 else "down" if delta_count < 0 else "steady",
-        "label": f"{abs(delta_count)} in Strained or Overloaded ({'+' if delta_pct > 0 else ''}{delta_pct}%) vs last week",
-        "context_sentence": f"{current_elevated} of {total_active} employees currently in elevated strain, {'up' if delta_count > 0 else 'down'} from {prev_elevated} last week.",
+        "label": f"{'+' if delta_pct > 0 else ''}{delta_pct}% in Strained or Overloaded vs last week",
+        "context_sentence": f"{current_elevated_pct}% of team currently in elevated strain, {'up' if delta_pct > 0 else 'down'} from {prev_elevated_pct}% last week.",
     }
 
     # Daily Check-in Participation
@@ -1256,7 +1256,7 @@ def get_manager_overview(team: str = Query("all"), date_range: str = Query("4w")
         "completed_count": checkin_done,
         "total_eligible": total_active,
         "label": f"{checkin_rate}% completion rate",
-        "context_sentence": f"{checkin_done} of {total_active} checked in today.",
+        "context_sentence": f"{checkin_rate}% daily check-in completion rate across the team.",
     }
 
     # 4-Week Outlook of Share in Strained or Overloaded
@@ -1484,7 +1484,7 @@ MANAGER_STATE = {
             "timestamp": "21 Nov 2026, 14:02:18",
             "actor": "Engineering Lead",
             "action": "Attempted team view",
-            "scope": "Design Systems Core (< 5 people)",
+            "scope": "Design Systems Core",
             "privacy_verification": "Data suppressed (n=3 < 5 threshold)",
         },
         {
@@ -1654,7 +1654,7 @@ def get_manager_checkins():
             "completed_count": 34,
             "total_eligible": 38,
             "label": "89.5% completion rate",
-            "context_sentence": "34 of 38 employees checked in today.",
+            "context_sentence": "89.5% daily check-in completion rate across the team.",
         },
         "week_over_week_change": {
             "participation_delta_pct": 4.5,
@@ -1851,7 +1851,7 @@ def get_manager_admin():
             "department": t["department"],
             "workforce": t["workforce"],
             "meets_privacy_threshold": t["workforce"] >= 5,
-            "status_label": "Active (Aggregated)" if t["workforce"] >= 5 else "Protected (< 5 people redacted)",
+            "status_label": "Active (Aggregated)" if t["workforce"] >= 5 else "Protected (Privacy redacted)",
         })
 
     return {
