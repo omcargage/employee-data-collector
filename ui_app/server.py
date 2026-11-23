@@ -93,8 +93,16 @@ DATA_CACHE: Dict[str, Any] = {
         "quiet_hours_start": "13:00",
         "quiet_hours_end": "14:00",
         "mute_today": False,
+        "disabled_forever": False,
     },
     "suggestions_history": {},
+    "nudge_trigger_counts": {
+        "sugg_break_1": 3,
+        "sugg_lunch_start": 1,
+        "sugg_lunch_followup": 1,
+        "sugg_wrapup_1": 4,
+        "sugg_focus_1": 2,
+    },
 }
 
 
@@ -600,19 +608,30 @@ def get_employee_dashboard(
     # Generate Personalized Nudges
     latest_row = sub_df.iloc[-1]
     nudges = []
-    if float(latest_row["longest_stretch_duration_mins"]) > 90:
+    # 4 continuous hours (240 minutes) threshold
+    if float(latest_row["longest_stretch_duration_mins"]) >= 240:
         nudges.append({
             "type": "stretch",
             "icon": "alarm",
             "title": "Long Work Stretch",
-            "message": f"You worked for {int(latest_row['longest_stretch_duration_mins'])} mins without a break. Consider stepping away for 10 minutes to recharge.",
+            "message": "You worked for 4 hours without a break. Consider stepping away for 5-10 minutes to recharge.",
         })
-    if float(latest_row["longest_lunch_break_mins"]) < 20:
+    # Lunch break reminder / screen-free check (no duration tracking)
+    now_hour = datetime.now().hour
+    lunch_break_taken = float(latest_row.get("longest_lunch_break_mins", 0)) > 0
+    if now_hour == 13:
         nudges.append({
             "type": "lunch",
-            "icon": "coffee",
-            "title": "Short or Skipped Lunch",
-            "message": f"Your lunch break was only {int(latest_row['longest_lunch_break_mins'])} mins today. Remember to take time for a full lunch break.",
+            "icon": "sun",
+            "title": "Lunch Time Reminder",
+            "message": "It's 1:00 PM — time to step away for lunch.",
+        })
+    elif now_hour >= 14 and not lunch_break_taken:
+        nudges.append({
+            "type": "lunch",
+            "icon": "sun",
+            "title": "Midday Check-in",
+            "message": "Hope you had a screen-free lunch.",
         })
     if int(latest_row["msgs_sent_after_hours"]) >= 5:
         nudges.append({
@@ -857,10 +876,11 @@ class SuggestionAction(BaseModel):
 
 
 class SuggestionPreferences(BaseModel):
-    frequency: str = "balanced"  # "minimal", "balanced", "frequent"
+    frequency: Optional[str] = "balanced"  # Legacy field
     quiet_hours_start: str = "13:00"
     quiet_hours_end: str = "14:00"
     mute_today: bool = False
+    disabled_forever: bool = False
 
 
 class TrackingPauseRequest(BaseModel):
@@ -869,57 +889,135 @@ class TrackingPauseRequest(BaseModel):
 
 
 @app.get("/api/employee/suggestions")
-def get_employee_suggestions(employee_id: str = "EMP_089"):
+def get_employee_suggestions(
+    employee_id: str = "EMP_089",
+    simulated_hour: Optional[int] = None,
+    lunch_break_detected: Optional[bool] = None,
+):
     history = DATA_CACHE.get("suggestions_history", {})
     prefs = DATA_CACHE.get("suggestions_preferences", {
-        "frequency": "balanced",
         "quiet_hours_start": "13:00",
         "quiet_hours_end": "14:00",
         "mute_today": False,
+        "disabled_forever": False,
     })
 
-    all_nudges = [
-        {
-            "id": "sugg_break_1",
-            "type": "break",
-            "category": "Work rhythm",
-            "icon": "coffee",
-            "title": "Continuous stretch detected",
-            "body": "You have been working continuously for 1h 35m without pausing. Take a 5-minute break away from your screen to rest your eyes and reset cognitive focus.",
-            "time_label": "Active now &bull; Detected 15m ago",
-            "priority": "high",
-        },
-        {
-            "id": "sugg_lunch_1",
+    if prefs.get("disabled_forever", False):
+        return {
+            "active_suggestions": [],
+            "past_suggestions": [],
+            "preferences": prefs,
+            "tracking_paused": DATA_CACHE.get("tracking_paused", False),
+            "disabled_forever": True,
+        }
+
+    now_local = datetime.now()
+    current_hour = simulated_hour if simulated_hour is not None else now_local.hour
+
+    if "nudge_trigger_counts" not in DATA_CACHE:
+        DATA_CACHE["nudge_trigger_counts"] = {
+            "sugg_break_1": 3,
+            "sugg_lunch_start": 1,
+            "sugg_lunch_followup": 1,
+            "sugg_wrapup_1": 4,
+            "sugg_focus_1": 2,
+        }
+    trigger_counts = DATA_CACHE["nudge_trigger_counts"]
+
+    all_nudges = []
+
+    # 1. Continuous Work Stretch Nudge: Trigger only after 4 continuous hours (240 mins)
+    all_nudges.append({
+        "id": "sugg_break_1",
+        "type": "break",
+        "category": "Work rhythm",
+        "icon": "coffee",
+        "title": "Continuous stretch detected",
+        "body": "You have been working continuously for 4 hours without pausing. Take a 5-minute break away from your screen to rest your eyes and reset cognitive focus.",
+        "time_label": "Active now &bull; 4 hours reached",
+        "priority": "high",
+        "trigger_count": trigger_counts.get("sugg_break_1", 3),
+        "trigger_count_label": f"Shown {trigger_counts.get('sugg_break_1', 3)} times",
+    })
+
+    # 2. Lunch Break Nudge Logic (1:00 PM & 2:00 PM) - No duration numbers
+    # Check if a screen-free lunch break was taken between 1:00 PM and 2:00 PM
+    has_lunch_break = (
+        lunch_break_detected if lunch_break_detected is not None
+        else DATA_CACHE.get("lunch_break_detected", False)
+    )
+
+    if current_hour == 13:
+        # At 1:00 PM: single gentle reminder nudge signaling start of lunch time
+        all_nudges.append({
+            "id": "sugg_lunch_start",
             "type": "midday_break",
             "category": "Midday recovery",
             "icon": "sun",
-            "title": "Protect your midday meal",
-            "body": "Your lunch break was only 14 minutes today. Take a 25-minute screen-free lunch away from your desk to recharge afternoon stamina.",
-            "time_label": "Today 1:15 PM",
+            "title": "Lunch time reminder",
+            "body": "It's 1:00 PM — time to step away for lunch.",
+            "time_label": "Today 1:00 PM",
             "priority": "medium",
-        },
-        {
-            "id": "sugg_wrapup_1",
-            "type": "wrap_up",
-            "category": "After-hours boundary",
-            "icon": "moon",
-            "title": "Evening boundary alert",
-            "body": "You have sent 7 communication messages after hours. Wrapping up for the evening protects your natural sleep architecture and prevents cognitive fatigue.",
-            "time_label": "Active now &bull; After 7:30 PM",
-            "priority": "high",
-        },
-        {
-            "id": "sugg_focus_1",
-            "type": "protect_focus",
-            "category": "Focus rhythm",
-            "icon": "target",
-            "title": "Protect focus block",
-            "body": "Frequent task switching and choppy focus intervals detected. Consider muting non-essential notifications for an uninterrupted 45-minute deep work session.",
-            "time_label": "Suggested for tomorrow 10:00 AM",
+            "trigger_count": trigger_counts.get("sugg_lunch_start", 1),
+            "trigger_count_label": f"Shown {trigger_counts.get('sugg_lunch_start', 1)} time",
+        })
+    elif current_hour >= 14:
+        # At 2:00 PM: check if NO screen-free lunch was detected between 1:00 PM and 2:00 PM
+        if not has_lunch_break:
+            all_nudges.append({
+                "id": "sugg_lunch_followup",
+                "type": "midday_break",
+                "category": "Midday recovery",
+                "icon": "sun",
+                "title": "Midday check-in",
+                "body": "Hope you had a screen-free lunch.",
+                "time_label": "Today 2:00 PM",
+                "priority": "medium",
+                "trigger_count": trigger_counts.get("sugg_lunch_followup", 1),
+                "trigger_count_label": f"Shown {trigger_counts.get('sugg_lunch_followup', 1)} time",
+            })
+    else:
+        # Before 1:00 PM: lunch reminder scheduled for 1:00 PM
+        all_nudges.append({
+            "id": "sugg_lunch_start",
+            "type": "midday_break",
+            "category": "Midday recovery",
+            "icon": "sun",
+            "title": "Lunch time reminder",
+            "body": "It's 1:00 PM — time to step away for lunch.",
+            "time_label": "Scheduled 1:00 PM",
             "priority": "medium",
-        },
-    ]
+            "trigger_count": trigger_counts.get("sugg_lunch_start", 1),
+            "trigger_count_label": f"Shown {trigger_counts.get('sugg_lunch_start', 1)} time",
+        })
+
+    # 3. Evening boundary alert
+    all_nudges.append({
+        "id": "sugg_wrapup_1",
+        "type": "wrap_up",
+        "category": "After-hours boundary",
+        "icon": "moon",
+        "title": "Evening boundary alert",
+        "body": "You have sent communication messages after hours. Wrapping up for the evening protects your natural sleep architecture and prevents cognitive fatigue.",
+        "time_label": "Active now &bull; After hours",
+        "priority": "high",
+        "trigger_count": trigger_counts.get("sugg_wrapup_1", 4),
+        "trigger_count_label": f"Shown {trigger_counts.get('sugg_wrapup_1', 4)} times",
+    })
+
+    # 4. Protect focus block
+    all_nudges.append({
+        "id": "sugg_focus_1",
+        "type": "protect_focus",
+        "category": "Focus rhythm",
+        "icon": "target",
+        "title": "Protect focus block",
+        "body": "Frequent task switching and choppy focus intervals detected. Consider muting non-essential notifications for an uninterrupted deep work session.",
+        "time_label": "Suggested for focus block",
+        "priority": "medium",
+        "trigger_count": trigger_counts.get("sugg_focus_1", 2),
+        "trigger_count_label": f"Shown {trigger_counts.get('sugg_focus_1', 2)} times",
+    })
 
     active = []
     past = []
@@ -935,6 +1033,7 @@ def get_employee_suggestions(employee_id: str = "EMP_089"):
         "past_suggestions": past,
         "preferences": prefs,
         "tracking_paused": DATA_CACHE.get("tracking_paused", False),
+        "disabled_forever": prefs.get("disabled_forever", False),
     }
 
 
@@ -1514,7 +1613,7 @@ def get_manager_drivers():
             "category": "Break patterns",
             "affecting_pct": 29.0,
             "headline": "Affecting 29% of the team",
-            "explanation": "Working for more than 90 minutes without a break, or skipping lunch breaks.",
+            "explanation": "Working for more than 4 hours without a break, or skipping lunch breaks.",
             "benchmark_pct": 20.0,
             "impact_level": "Moderate",
             "status_token": "Stretched",

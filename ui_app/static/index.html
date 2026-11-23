@@ -1084,7 +1084,7 @@
             key: "stretch_mins",
             metricKey: "stretch",
             label: "Longest time without a break",
-            meaning: "Working past 90 minutes without pausing raises mental tiredness and mistake rates.",
+            meaning: "Working past 4 hours without pausing raises mental tiredness and mistake rates.",
             band: baselineBands.stretch
           },
           {
@@ -2082,15 +2082,16 @@
     function TodayPersonalizedSuggestionsSection({ employeeId, outlookStatus = "Green", primaryDrivers = [] }) {
       const [activeSuggestions, setActiveSuggestions] = useState([]);
       const [toastNotice, setToastNotice] = useState(null);
+      const [isDisabledForever, setIsDisabledForever] = useState(false);
 
       const topDriver = primaryDrivers && primaryDrivers.length > 0 ? primaryDrivers[0].category_key : "work_pattern_changes";
 
-      let suggestion = "You've had three long stretches this week. Try a 5-minute break every 90 minutes.";
+      let suggestion = "You've had long stretches this week. Try a 5-minute break after 4 hours of continuous work.";
 
       if (topDriver === "work_pattern_changes") {
         suggestion = outlookStatus === "Green"
           ? "Your session lengths are well-spaced today. Keep taking short micro-breaks between deep focus tasks."
-          : "You've had three long stretches this week. Try a 5-minute break every 90 minutes.";
+          : "You've had long stretches this week. Try a 5-minute break after 4 hours of continuous work.";
       } else if (topDriver === "boundary_erosion") {
         suggestion = outlookStatus === "Green"
           ? "You maintained firm evening boundaries today. Protect your restful evening."
@@ -2101,8 +2102,8 @@
           : "Your work focus has been broken up more often. Consider blocking a 45-minute uninterrupted quiet block tomorrow.";
       } else if (topDriver === "recovery_deficit" || topDriver === "lunch_break" || topDriver === "lunch_skipped") {
         suggestion = outlookStatus === "Green"
-          ? "You took a proper lunch break today."
-          : "Your lunch breaks were unusually short this week. Try taking a full 30-minute screen-free lunch away from your desk.";
+          ? "You took a proper screen-free lunch today."
+          : "Missed midday recovery detected this week. Step away from your workstation for a screen-free lunch.";
       }
 
       const loadSuggestions = () => {
@@ -2110,7 +2111,8 @@
         fetch(`/api/employee/suggestions?employee_id=${targetId}`)
           .then(res => res.json())
           .then(resData => {
-            setActiveSuggestions(resData.active_suggestions || []);
+            setIsDisabledForever(Boolean(resData.disabled_forever));
+            setActiveSuggestions(resData.disabled_forever ? [] : (resData.active_suggestions || []));
           })
           .catch(err => console.error("Error loading active suggestions:", err));
       };
@@ -2160,7 +2162,16 @@
             </div>
 
             {/* Directly Integrated Compact Mini-Cards Representing Active Suggestions */}
-            {activeSuggestions && activeSuggestions.length > 0 ? (
+            {isDisabledForever ? (
+              <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between text-xs text-[var(--text-muted)]">
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-[var(--text-muted)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                  </svg>
+                  <span>Suggestions are turned off forever. You can re-enable them anytime in Suggestions &rarr; Preferences.</span>
+                </div>
+              </div>
+            ) : activeSuggestions && activeSuggestions.length > 0 ? (
               <div className="mt-4 pt-4 border-t border-[var(--border-subtle)]">
                 <div className="flex items-center justify-between text-xs mb-2.5">
                   <span className="font-semibold uppercase tracking-wider text-[10px] text-[var(--text-secondary)]">
@@ -2187,10 +2198,16 @@
                         style={{ borderLeftWidth: "4px", borderLeftColor: typeBorder }}
                       >
                         <div>
-                          <div className="flex items-center justify-between gap-2 text-[10px] mb-1">
-                            <span className="px-2 py-0.5 rounded-full font-semibold bg-[var(--bg-card-subtle)] text-[var(--primary)]">
-                              {n.category}
-                            </span>
+                          <div className="flex items-center justify-between gap-2 text-[10px] mb-1.5 flex-wrap">
+                            <div className="flex items-center gap-1.5">
+                              <span className="px-2 py-0.5 rounded-full font-semibold bg-[var(--bg-card-subtle)] text-[var(--primary)] text-[10px]">
+                                {n.category}
+                              </span>
+                              {/* Nudge Counter Badge */}
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[var(--bg-card-subtle)] text-[var(--text-muted)] border border-[var(--border-subtle)]">
+                                {n.trigger_count_label || `Shown ${n.trigger_count || 1} times`}
+                              </span>
+                            </div>
                             <span className="text-[var(--text-muted)] text-[10px]">{n.time_label}</span>
                           </div>
                           <h4 className="text-xs sm:text-sm font-bold text-[var(--text-primary)] leading-snug">
@@ -2336,16 +2353,17 @@
       const [nudges, setNudges] = useState([]);
       const [pastNudges, setPastNudges] = useState([]);
       const [preferences, setPreferences] = useState({
-        frequency: "balanced",
         quiet_hours_start: "13:00",
         quiet_hours_end: "14:00",
         mute_today: false,
+        disabled_forever: false,
       });
       const [notificationPermission, setNotificationPermission] = useState(
         typeof window !== "undefined" && "Notification" in window ? Notification.permission : "default"
       );
       const [testNotificationSent, setTestNotificationSent] = useState(false);
       const [toastNotice, setToastNotice] = useState(null);
+      const [showDisableConfirmModal, setShowDisableConfirmModal] = useState(false);
 
       // Fetch suggestions and preferences
       const loadSuggestions = () => {
@@ -2392,7 +2410,14 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(next)
-        }).catch(err => console.error("Error saving preferences:", err));
+        })
+          .then(res => res.json())
+          .then(resData => {
+            if (resData.preferences) setPreferences(resData.preferences);
+            loadSuggestions();
+            window.dispatchEvent(new CustomEvent("ws:suggestions-updated"));
+          })
+          .catch(err => console.error("Error saving preferences:", err));
       };
 
       // Desktop Push Notification Trigger
@@ -2428,7 +2453,7 @@
         }
         sendLiveDesktopNotification(
           "WorkSense — Micro-break Suggestion",
-          "Continuous stretch of 95 mins detected. Step away from your desk for 5 minutes!"
+          "Continuous stretch of 4 hours detected. Step away from your desk for a recovery break!"
         );
       };
 
@@ -2488,7 +2513,7 @@
                   Receive suggestions as native Windows notifications
                 </h4>
                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed max-w-xl">
-                  WorkSense can pop desktop toast alerts for 90-minute stretch warnings, midday recovery reminders, and end-of-day check-in prompts directly into your Windows Action Center.
+                  WorkSense can pop desktop toast alerts for 4-hour stretch warnings, midday recovery reminders, and end-of-day check-in prompts directly into your Windows Action Center.
                 </p>
               </div>
 
@@ -2518,50 +2543,16 @@
             </div>
           </div>
 
-          {/* Preferences: Frequency, Quiet Hours, Mute for today */}
+          {/* Preferences: Quiet Hours, Mute for today, Turn off forever */}
           <div className="ws-card p-6">
             <h3 className="text-base font-bold text-[var(--text-primary)] mb-1">
               Preferences
             </h3>
             <p className="text-xs text-[var(--text-secondary)] mb-4">
-              Configure how often suggestions appear and set protected quiet periods.
+              Configure your quiet hours, temporary pausing, and suggestion delivery preferences.
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-1 border-t border-[var(--border-subtle)]">
-              {/* Frequency Segmented Control */}
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-[var(--text-primary)] block">
-                  Notification frequency
-                </label>
-                <div className="flex items-center bg-[var(--bg-card-subtle)] p-1 rounded-xl border border-[var(--border-subtle)]">
-                  {[
-                    { id: "minimal", label: "Minimal" },
-                    { id: "balanced", label: "Balanced" },
-                    { id: "frequent", label: "Frequent" },
-                  ].map((f) => (
-                    <button
-                      key={f.id}
-                      type="button"
-                      onClick={() => handlePrefChange("frequency", f.id)}
-                      className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all ${
-                        preferences.frequency === f.id
-                          ? "bg-[var(--primary)] text-white shadow-xs"
-                          : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                      }`}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
-                <span className="text-[11px] text-[var(--text-muted)] block">
-                  {preferences.frequency === "minimal"
-                    ? "Critical alerts only (> 90m stretches)"
-                    : preferences.frequency === "frequent"
-                    ? "All rhythm, break, and evening suggestions"
-                    : "Default: 2 to 3 gentle nudges spaced across day"}
-                </span>
-              </div>
-
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1 border-t border-[var(--border-subtle)]">
               {/* Quiet Hours */}
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-[var(--text-primary)] block">
@@ -2598,7 +2589,7 @@
                       {preferences.mute_today ? "Muted for today" : "Active today"}
                     </span>
                     <span className="text-[11px] text-[var(--text-muted)]">
-                      {preferences.mute_today ? "Resumes tomorrow morning" : "Suggestions enabled"}
+                      {preferences.mute_today ? "Resumes tomorrow morning" : "Suggestions active today"}
                     </span>
                   </div>
                   <button
@@ -2620,20 +2611,126 @@
                 </span>
               </div>
             </div>
+
+            {/* Permanent Disable Option ("Turn off suggestions forever") */}
+            <div className="mt-5 pt-4 border-t border-[var(--border-subtle)] flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-[var(--bg-card-subtle)] border border-[var(--border-subtle)]">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-[var(--text-primary)]">
+                    Permanent suggestions control
+                  </span>
+                  {preferences.disabled_forever && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-[var(--status-overloaded-bg)] text-[var(--status-overloaded)]">
+                      Disabled forever
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-[var(--text-secondary)] leading-relaxed max-w-xl">
+                  We recommend keeping nudges on to support healthy work rhythms, but if you still want them off, you can disable them permanently here.
+                </p>
+              </div>
+
+              <div className="shrink-0">
+                {preferences.disabled_forever ? (
+                  <button
+                    type="button"
+                    onClick={() => handlePrefChange("disabled_forever", false)}
+                    className="ws-btn-primary text-xs py-2 px-4 shadow-xs"
+                  >
+                    Turn suggestions back on
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowDisableConfirmModal(true)}
+                    className="text-xs font-semibold py-2 px-4 rounded-xl border border-[var(--border-strong)] text-[var(--status-overloaded)] hover:bg-[var(--status-overloaded-bg)] transition-colors"
+                  >
+                    Turn off suggestions forever
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
+
+          {/* Disable Forever Confirmation Modal */}
+          {showDisableConfirmModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+              <div className="ws-card max-w-md w-full p-6 space-y-4 border border-[var(--border-strong)] shadow-xl">
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 rounded-xl bg-[var(--status-overloaded-bg)] text-[var(--status-overloaded)] shrink-0">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-[var(--text-primary)]">
+                      Turn off suggestions forever?
+                    </h3>
+                    <p className="text-xs text-[var(--text-secondary)] mt-1.5 leading-relaxed">
+                      We recommend keeping nudges on to support healthy work rhythms, but if you still want them off, you can disable them permanently here.
+                    </p>
+                    <p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">
+                      Suggestions will stop appearing across both your Today dashboard and this page until you re-enable them.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border-subtle)]">
+                  <button
+                    type="button"
+                    onClick={() => setShowDisableConfirmModal(false)}
+                    className="ws-btn-secondary text-xs py-2 px-4"
+                  >
+                    Keep suggestions on
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDisableConfirmModal(false);
+                      handlePrefChange("disabled_forever", true);
+                      setToastNotice("Suggestions turned off forever");
+                      setTimeout(() => setToastNotice(null), 3000);
+                    }}
+                    className="text-xs font-semibold py-2 px-4 rounded-xl bg-[var(--status-overloaded)] text-white hover:opacity-90 transition-opacity shadow-xs"
+                  >
+                    Yes, turn off forever
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Active Suggestions List */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-[var(--text-primary)]">
-                Active suggestions ({nudges.length})
+                Active suggestions ({preferences.disabled_forever ? 0 : nudges.length})
               </h3>
-              <span className="text-xs text-[var(--text-muted)]">
-                Click Done, Snooze, or Not helpful to respond
-              </span>
+              {!preferences.disabled_forever && (
+                <span className="text-xs text-[var(--text-muted)]">
+                  Click Done, Snooze, or Not helpful to respond
+                </span>
+              )}
             </div>
 
-            {nudges.length === 0 ? (
+            {preferences.disabled_forever ? (
+              <div className="ws-card p-8 text-center text-xs text-[var(--text-secondary)]">
+                <svg className="w-8 h-8 mx-auto text-[var(--text-muted)] mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                </svg>
+                <div className="font-bold text-sm text-[var(--text-primary)]">Suggestions are turned off forever</div>
+                <p className="mt-1 max-w-md mx-auto">
+                  We recommend keeping nudges on to support healthy work rhythms, but suggestions are currently turned off. You can re-enable them anytime in Preferences above.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => handlePrefChange("disabled_forever", false)}
+                  className="mt-4 ws-btn-primary text-xs py-2 px-4 inline-flex items-center gap-1.5"
+                >
+                  Turn suggestions back on
+                </button>
+              </div>
+            ) : nudges.length === 0 ? (
               <div className="ws-card p-8 text-center text-xs text-[var(--text-secondary)]">
                 <svg className="w-8 h-8 mx-auto text-[var(--status-steady)] mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -2657,11 +2754,17 @@
                     }}
                   >
                     <div>
-                      {/* Category & Time */}
-                      <div className="flex items-center justify-between text-[11px] mb-2">
-                        <span className="px-2 py-0.5 rounded-full font-semibold bg-[var(--bg-card-subtle)] text-[var(--primary)]">
-                          {n.category}
-                        </span>
+                      {/* Category, Nudge Counter Badge & Time */}
+                      <div className="flex items-center justify-between text-[11px] mb-2 flex-wrap gap-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="px-2 py-0.5 rounded-full font-semibold bg-[var(--bg-card-subtle)] text-[var(--primary)]">
+                            {n.category}
+                          </span>
+                          {/* Nudge Counter Indicator */}
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[var(--bg-card-subtle)] text-[var(--text-muted)] border border-[var(--border-subtle)]">
+                            {n.trigger_count_label || `Shown ${n.trigger_count || 1} times`}
+                          </span>
+                        </div>
                         <span className="text-[var(--text-muted)]">{n.time_label}</span>
                       </div>
 
@@ -2712,55 +2815,6 @@
               </div>
             )}
           </div>
-
-          {/* Past Suggestions Section */}
-          {pastNudges.length > 0 && (
-            <div className="ws-card p-6">
-              <h3 className="text-base font-bold text-[var(--text-primary)] mb-1">
-                Resolved suggestions
-              </h3>
-              <p className="text-xs text-[var(--text-secondary)] mb-4">
-                Suggestions you marked Done, Snoozed, or Dismissed earlier today.
-              </p>
-
-              <div className="divide-y divide-[var(--border-subtle)]">
-                {pastNudges.map((pn) => {
-                  const isDone = pn.action_taken === "done";
-                  const isSnooze = pn.action_taken === "snooze";
-
-                  return (
-                    <div key={pn.id} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-4 text-xs">
-                      <div className="space-y-0.5">
-                        <div className="font-semibold text-[var(--text-primary)]">{pn.title}</div>
-                        <div className="text-[11px] text-[var(--text-secondary)] line-clamp-1">{pn.body}</div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                            isDone
-                              ? "bg-[var(--status-steady-bg)] text-[var(--status-steady)]"
-                              : isSnooze
-                              ? "bg-[var(--status-stretched-bg)] text-[var(--status-stretched)]"
-                              : "bg-[var(--bg-card-subtle)] text-[var(--text-muted)]"
-                          }`}
-                        >
-                          {isDone ? "Done ✓" : isSnooze ? "Snoozed" : "Not helpful"}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleAction(pn.id, "reopen")}
-                          className="text-[11px] text-[var(--primary)] hover:underline"
-                        >
-                          Restore
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
       );
     }
@@ -4076,7 +4130,7 @@
         category: "Break patterns",
         affecting_pct: 29.0,
         headline: "Affecting 29% of the team",
-        explanation: "Extended continuous desk stretches exceeding 90 minutes without a recovery pause, or skipped lunch breaks.",
+        explanation: "Extended continuous desk stretches exceeding 4 hours without a recovery pause, or skipped lunch breaks.",
         benchmark_pct: 20.0,
         status_token: "Stretched",
         recommended_action: "Protect 12:30 PM - 1:30 PM calendar blocks and encourage regular micro-breaks."
