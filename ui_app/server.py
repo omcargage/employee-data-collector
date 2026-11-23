@@ -381,6 +381,7 @@ def build_live_employee_dashboard() -> Dict[str, Any]:
         "bat12_summary": bat12_summary,
         "tracking_paused": DATA_CACHE.get("tracking_paused", False),
         "suggestions_preferences": DATA_CACHE.get("suggestions_preferences", {}),
+        "observed_holidays": MANAGER_STATE["holidays"],
     }
 
 
@@ -778,6 +779,7 @@ def get_employee_dashboard(
         "bat12_summary": bat12_summary,
         "tracking_paused": DATA_CACHE.get("tracking_paused", False),
         "suggestions_preferences": DATA_CACHE.get("suggestions_preferences", {}),
+        "observed_holidays": MANAGER_STATE["holidays"],
     }
 
 
@@ -1093,8 +1095,17 @@ def trigger_test_notification():
     return {
         "success": True,
         "title": "WorkSense — Suggestions for you",
-        "body": "Continuous stretch of 95 mins detected. Step away from your desk for 5 minutes!",
+        "body": "Continuous stretch of 4 hours detected. Step away from your desk for a recovery break!",
         "type": "break",
+    }
+
+
+@app.get("/api/holidays")
+def get_company_holidays():
+    """Shared company-observed holidays for 2026."""
+    return {
+        "year": 2026,
+        "holidays": MANAGER_STATE["holidays"],
     }
 
 
