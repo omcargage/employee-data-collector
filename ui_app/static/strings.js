@@ -187,7 +187,7 @@ window.WORK_SENSE_STRINGS = {
       afterHours: "Late-day messages",
       wpm: "Typing speed",
       corrections: "Backspaces & edits",
-      checkin: "Daily score"
+      checkin: "Daily check-in"
     }
   },
 
@@ -197,7 +197,7 @@ window.WORK_SENSE_STRINGS = {
     pageSubtitle: "Your daily 2-minute check-in history",
     lockedBefore1Pm: "Opens at 1:00 PM so it reflects your day.",
     doneToday: "Done today ✓",
-    usualScorePrefix: "Your usual check-in score",
+    usualScorePrefix: "Your usual check-in",
     scaleLabels: ["Never", "Rarely", "Sometimes", "Often", "Always"],
     skipItem: "Skip this question",
     unskipItem: "Rate this question",

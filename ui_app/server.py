@@ -43,6 +43,7 @@ from edc_agent.privacy.self_report import (
     BAT12_QUESTIONS,
     BAT12Summary,
     compute_bat12_scores,
+    get_bat_percentile_category,
 )
 from edc_agent.storage.database import Database
 
@@ -267,25 +268,31 @@ def build_live_employee_dashboard() -> Dict[str, Any]:
         recent_bat = DATA_CACHE["recent_bat_submissions"].get(f"LOCAL_DESKTOP_AGENT:{today_str}")
 
     today_score_val = recent_bat["total_bat_score"] if recent_bat else 1.5
-    today_desc = recent_bat.get("score_desc", "low") if recent_bat else "low"
+    today_cat = recent_bat.get("category", get_bat_percentile_category(today_score_val, "total")) if recent_bat else "Low"
 
     bat12_summary = {
         "today_submitted": recent_bat is not None,
         "today_early_checkin": recent_bat.get("early_checkin", False) if recent_bat else False,
         "submitted_at": recent_bat.get("submitted_at") if recent_bat else None,
         "today_score": today_score_val,
-        "today_score_text": f"{today_score_val:.1f} out of 5 ({today_desc})",
-        "today_score_desc": today_desc,
+        "today_category": today_cat,
+        "today_score_text": today_cat,
+        "today_score_desc": today_cat,
         "today_status": recent_bat.get("clinical_status", "Green") if recent_bat else "Green",
         "today_exhaustion": recent_bat.get("exhaustion_score", 1.4) if recent_bat else 1.4,
+        "today_exhaustion_category": recent_bat.get("exhaustion_category", get_bat_percentile_category(1.4, "exhaustion")) if recent_bat else get_bat_percentile_category(1.4, "exhaustion"),
         "today_mental_distance": recent_bat.get("mental_distance_score", 1.3) if recent_bat else 1.3,
+        "today_mental_distance_category": recent_bat.get("mental_distance_category", get_bat_percentile_category(1.3, "mental_distance")) if recent_bat else get_bat_percentile_category(1.3, "mental_distance"),
         "today_emotional": recent_bat.get("emotional_impairment_score", 1.3) if recent_bat else 1.3,
+        "today_emotional_category": recent_bat.get("emotional_category", get_bat_percentile_category(1.3, "emotional_impairment")) if recent_bat else get_bat_percentile_category(1.3, "emotional_impairment"),
         "today_cognitive": recent_bat.get("cognitive_impairment_score", 1.3) if recent_bat else 1.3,
+        "today_cognitive_category": recent_bat.get("cognitive_category", get_bat_percentile_category(1.3, "cognitive_impairment")) if recent_bat else get_bat_percentile_category(1.3, "cognitive_impairment"),
         "baseline_bat_score": 1.5,
         "baseline_bat_status": "Low",
         "usual_checkin_score": 1.5,
-        "usual_checkin_desc": "low",
-        "usual_checkin_text": "Your usual check-in score: 1.5 (low)",
+        "usual_checkin_category": "Low",
+        "usual_checkin_desc": "Low",
+        "usual_checkin_text": "Your usual check-in: Low",
         "usual_range": {"min": 1.2, "max": 1.8},
         "checkin_history": [
             {
@@ -293,11 +300,16 @@ def build_live_employee_dashboard() -> Dict[str, Any]:
                 "day_name": item["day_name"],
                 "is_weekend": item["is_weekend"],
                 "score": 1.5,
+                "category": "Low",
                 "status": "Green",
                 "exhaustion": 1.4,
+                "exhaustion_category": "Low",
                 "mental_distance": 1.3,
+                "mental_distance_category": "Low",
                 "emotional": 1.3,
+                "emotional_category": "Low",
                 "cognitive": 1.3,
+                "cognitive_category": "Low",
             }
             for item in recent_30d_telemetry
         ],
@@ -654,48 +666,61 @@ def get_employee_dashboard(
     base_bat_val = float(weekday_base["bat_total_score"].mean()) if "bat_total_score" in weekday_base else 1.5
     if base_bat_val >= 3.65:
         base_desc = "high"
-    elif base_bat_val >= 3.02:
-        base_desc = "elevated"
-    elif base_bat_val >= 2.59:
-        base_desc = "mild"
-    else:
-        base_desc = "low"
+    base_category = get_bat_percentile_category(base_bat_val, "total")
 
     today_score_val = recent_bat["total_bat_score"] if recent_bat else round(float(latest_row.get("bat_total_score", 1.5)), 2)
-    if today_score_val >= 3.65:
-        today_desc = "high"
-    elif today_score_val >= 3.02:
-        today_desc = "elevated"
-    elif today_score_val >= 2.59:
-        today_desc = "mild"
-    else:
-        today_desc = "low"
+    today_category = recent_bat.get("category", get_bat_percentile_category(today_score_val, "total")) if recent_bat else get_bat_percentile_category(today_score_val, "total")
+
+    # Populate qualitative categories across historical checkin records
+    for ch in checkin_history:
+        ch_score = ch.get("score", 1.5)
+        ch["category"] = get_bat_percentile_category(ch_score, "total")
+        ch["exhaustion_category"] = get_bat_percentile_category(ch.get("exhaustion", 1.4), "exhaustion")
+        ch["mental_distance_category"] = get_bat_percentile_category(ch.get("mental_distance", 1.3), "mental_distance")
+        ch["emotional_category"] = get_bat_percentile_category(ch.get("emotional", 1.3), "emotional_impairment")
+        ch["cognitive_category"] = get_bat_percentile_category(ch.get("cognitive", 1.3), "cognitive_impairment")
 
     if recent_bat and len(checkin_history) > 0:
         checkin_history[-1]["score"] = recent_bat["total_bat_score"]
+        checkin_history[-1]["category"] = today_category
         checkin_history[-1]["status"] = recent_bat["clinical_status"]
         checkin_history[-1]["exhaustion"] = recent_bat["exhaustion_score"]
+        checkin_history[-1]["exhaustion_category"] = recent_bat.get("exhaustion_category", get_bat_percentile_category(recent_bat["exhaustion_score"], "exhaustion"))
         checkin_history[-1]["mental_distance"] = recent_bat["mental_distance_score"]
+        checkin_history[-1]["mental_distance_category"] = recent_bat.get("mental_distance_category", get_bat_percentile_category(recent_bat["mental_distance_score"], "mental_distance"))
         checkin_history[-1]["emotional"] = recent_bat["emotional_impairment_score"]
+        checkin_history[-1]["emotional_category"] = recent_bat.get("emotional_category", get_bat_percentile_category(recent_bat["emotional_impairment_score"], "emotional_impairment"))
         checkin_history[-1]["cognitive"] = recent_bat["cognitive_impairment_score"]
+        checkin_history[-1]["cognitive_category"] = recent_bat.get("cognitive_category", get_bat_percentile_category(recent_bat["cognitive_impairment_score"], "cognitive_impairment"))
+
+    today_exhaustion_val = recent_bat["exhaustion_score"] if recent_bat else round(float(latest_row.get("bat_exhaustion", 1.4)), 2)
+    today_mental_distance_val = recent_bat["mental_distance_score"] if recent_bat else round(float(latest_row.get("bat_mental_distance", 1.3)), 2)
+    today_emotional_val = recent_bat["emotional_impairment_score"] if recent_bat else round(float(latest_row.get("bat_emotional_impairment", 1.3)), 2)
+    today_cognitive_val = recent_bat["cognitive_impairment_score"] if recent_bat else round(float(latest_row.get("bat_cognitive_impairment", 1.3)), 2)
 
     bat12_summary = {
         "today_submitted": recent_bat is not None,
         "today_early_checkin": recent_bat.get("early_checkin", False) if recent_bat else False,
         "submitted_at": recent_bat.get("submitted_at") if recent_bat else None,
         "today_score": today_score_val,
-        "today_score_text": f"{today_score_val:.1f} out of 5 ({today_desc})",
-        "today_score_desc": today_desc,
+        "today_category": today_category,
+        "today_score_text": today_category,
+        "today_score_desc": today_category,
         "today_status": recent_bat["clinical_status"] if recent_bat else latest_row.get("bat_status", "Green"),
-        "today_exhaustion": recent_bat["exhaustion_score"] if recent_bat else round(float(latest_row.get("bat_exhaustion", 1.4)), 2),
-        "today_mental_distance": recent_bat["mental_distance_score"] if recent_bat else round(float(latest_row.get("bat_mental_distance", 1.3)), 2),
-        "today_emotional": recent_bat["emotional_impairment_score"] if recent_bat else round(float(latest_row.get("bat_emotional_impairment", 1.3)), 2),
-        "today_cognitive": recent_bat["cognitive_impairment_score"] if recent_bat else round(float(latest_row.get("bat_cognitive_impairment", 1.3)), 2),
+        "today_exhaustion": today_exhaustion_val,
+        "today_exhaustion_category": get_bat_percentile_category(today_exhaustion_val, "exhaustion"),
+        "today_mental_distance": today_mental_distance_val,
+        "today_mental_distance_category": get_bat_percentile_category(today_mental_distance_val, "mental_distance"),
+        "today_emotional": today_emotional_val,
+        "today_emotional_category": get_bat_percentile_category(today_emotional_val, "emotional_impairment"),
+        "today_cognitive": today_cognitive_val,
+        "today_cognitive_category": get_bat_percentile_category(today_cognitive_val, "cognitive_impairment"),
         "baseline_bat_score": round(base_bat_val, 1),
-        "baseline_bat_status": base_desc.capitalize(),
+        "baseline_bat_status": base_category,
         "usual_checkin_score": round(base_bat_val, 1),
-        "usual_checkin_desc": base_desc,
-        "usual_checkin_text": f"Your usual check-in score: {base_bat_val:.1f} ({base_desc})",
+        "usual_checkin_category": base_category,
+        "usual_checkin_desc": base_category,
+        "usual_checkin_text": f"Your usual check-in: {base_category}",
         "usual_range": {
             "min": round(max(1.0, base_bat_val - 0.3), 1),
             "max": round(min(5.0, base_bat_val + 0.3), 1),
@@ -782,12 +807,19 @@ def submit_bat12_survey(submission: BAT12Submission):
     cache_key = f"{submission.employee_id}:{logical_day.isoformat()}"
     sub_data = {
         "total_bat_score": summary.total_bat_score,
-        "score_desc": score_desc,
-        "score_text": f"{summary.total_bat_score:.1f} out of 5 ({score_desc})",
+        "score_desc": summary.category,
+        "score_text": summary.category,
+        "category": summary.category,
         "exhaustion_score": summary.exhaustion_score,
+        "exhaustion_category": summary.exhaustion_category,
         "mental_distance_score": summary.mental_distance_score,
+        "mental_distance_category": summary.mental_distance_category,
         "emotional_impairment_score": summary.emotional_impairment_score,
+        "emotional_category": summary.emotional_impairment_category,
+        "emotional_impairment_category": summary.emotional_impairment_category,
         "cognitive_impairment_score": summary.cognitive_impairment_score,
+        "cognitive_category": summary.cognitive_impairment_category,
+        "cognitive_impairment_category": summary.cognitive_impairment_category,
         "clinical_status": summary.clinical_status,
         "verified_stressed_day": summary.verified_stressed_day,
         "early_checkin": bool(submission.early_checkin),
@@ -809,7 +841,8 @@ def submit_bat12_survey(submission: BAT12Submission):
         "success": True,
         "message": f"Day Check-in recorded successfully for {logical_day.isoformat()}",
         "summary": summary,
-        "score_text": f"{summary.total_bat_score:.1f} out of 5 ({score_desc})",
+        "score_text": summary.category,
+        "category": summary.category,
         "early_checkin": bool(submission.early_checkin),
         "submitted_at": submitted_timestamp,
     }

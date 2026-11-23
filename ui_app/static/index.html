@@ -442,6 +442,45 @@
       return `${num}`;
     }
 
+    // =========================================================================
+    // HELPER: BAT-12 Official Percentile Category Mapping & Badges
+    // =========================================================================
+    function getBatPercentileCategory(score, dimension = "total") {
+      if (score === undefined || score === null || isNaN(Number(score))) return "Low";
+      const s = Number(score);
+      if (dimension === "mental_distance" || dimension === "emotional_impairment") {
+        if (s >= 3.33) return "Very high";
+        if (s >= 2.33) return "High";
+        if (s >= 1.33) return "Average";
+        return "Low";
+      } else if (dimension === "exhaustion" || dimension === "cognitive_impairment") {
+        if (s >= 3.67) return "Very high";
+        if (s >= 2.67) return "High";
+        if (s >= 1.67) return "Average";
+        return "Low";
+      } else {
+        // Total BAT-12 norm thresholds
+        if (s >= 3.65) return "Very high";
+        if (s >= 2.67) return "High";
+        if (s >= 1.67) return "Average";
+        return "Low";
+      }
+    }
+
+    function getCategoryBadgeClass(category) {
+      const cat = String(category || "").toLowerCase();
+      if (cat.includes("very high")) {
+        return "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border-rose-200 dark:border-rose-800";
+      }
+      if (cat.includes("high")) {
+        return "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-800";
+      }
+      if (cat.includes("average")) {
+        return "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-800";
+      }
+      return "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800";
+    }
+
     const STRINGS = window.WORK_SENSE_STRINGS || {};
 
     // =========================================================================
@@ -1441,9 +1480,9 @@
 
       const isUnlocked = isPastUnlockTime || isUnlockedByInactivityOrPause;
 
-      // Rule (e): One submission per day; editable until midnight; afterwards show "Done today ✓" with score as "1.8 out of 5 (low)"
+      // Rule (e): One submission per day; editable until midnight; afterwards show "Done today ✓" with qualitative category badge
       const isDoneToday = summary && (summary.today_submitted || summary.submitted_at);
-      const scoreText = summary ? (summary.today_score_text || `${summary.today_score || 1.8} out of 5 (${summary.today_score_desc || "low"})`) : "1.8 out of 5 (low)";
+      const todayCategory = summary ? (summary.today_category || summary.today_score_text || getBatPercentileCategory(summary.today_score, "total")) : "Low";
 
       return (
         <div
@@ -1527,8 +1566,8 @@
                     </svg>
                     Done today &check;
                   </span>
-                  <span className="text-sm font-semibold text-[var(--text-primary)]">
-                    {scoreText}
+                  <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${getCategoryBadgeClass(todayCategory)}`}>
+                    {todayCategory}
                   </span>
                 </div>
                 <p className="text-xs text-[var(--text-secondary)] pt-0.5 leading-relaxed">
@@ -1623,7 +1662,8 @@
 
       const batSummary = data.bat12_summary || {};
       const history = batSummary.checkin_history || [];
-      const usualScoreText = batSummary.usual_checkin_text || "Your usual check-in score: 1.5 (low)";
+      const usualCategory = batSummary.usual_checkin_category || batSummary.baseline_bat_status || "Low";
+      const usualScoreText = `Your usual check-in: ${usualCategory}`;
       const usualVal = batSummary.usual_checkin_score || 1.5;
       const usualRange = batSummary.usual_range || { min: 1.2, max: 1.8 };
 
@@ -1651,15 +1691,19 @@
       const usualLineY = getY(usualVal);
 
       // Points and Path
-      const points = history.map((d, i) => ({
-        x: getX(i),
-        y: getY(d.score || 1.5),
-        score: d.score || 1.5,
-        date: d.date,
-        dayName: d.day_name,
-        isWeekend: d.is_weekend,
-        status: d.status || "Green"
-      }));
+      const points = history.map((d, i) => {
+        const cat = d.category || getBatPercentileCategory(d.score || 1.5, "total");
+        return {
+          x: getX(i),
+          y: getY(d.score || 1.5),
+          score: d.score || 1.5,
+          category: cat,
+          date: d.date,
+          dayName: d.day_name,
+          isWeekend: d.is_weekend,
+          status: d.status || "Green"
+        };
+      });
 
       const linePath = points.length > 0
         ? points.reduce((acc, pt, i) => `${acc} ${i === 0 ? "M" : "L"} ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`, "")
@@ -1698,28 +1742,34 @@
                 </h3>
               </div>
 
-              {/* Callout: "Your usual check-in score: 1.5 (low)" */}
-              <div className="p-2.5 px-3.5 rounded-xl bg-[var(--primary-subtle)] border border-[var(--border-subtle)]">
-                <span className="text-xs font-bold text-[var(--primary)]">
-                  {usualScoreText}
+              {/* Callout: "Your usual check-in: Low" */}
+              <div className="p-2.5 px-3.5 rounded-xl bg-[var(--primary-subtle)] border border-[var(--border-subtle)] flex items-center gap-2">
+                <span className="text-xs font-medium text-[var(--text-secondary)]">Your usual check-in:</span>
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getCategoryBadgeClass(usualCategory)}`}>
+                  {usualCategory}
                 </span>
               </div>
             </div>
 
             <p className="text-xs text-[var(--text-secondary)] mb-4">
-              Daily BAT-12 composite score on a 1.0 to 5.0 scale. Shaded band reflects your personal calibrated baseline.
+              Daily check-in trend over the past 30 days. Shaded band reflects your personal calibrated baseline.
             </p>
 
             {/* SVG Line Chart */}
             <div className="relative my-2">
               <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-44 overflow-visible">
-                {/* Horizontal Grid lines */}
-                {[1, 2, 3, 4, 5].map((s) => {
-                  const y = getY(s);
+                {/* Horizontal Category Reference Lines */}
+                {[
+                  { s: 1.33, label: "Low" },
+                  { s: 2.17, label: "Average" },
+                  { s: 3.16, label: "High" },
+                  { s: 4.33, label: "Very high" }
+                ].map((item, idx) => {
+                  const y = getY(item.s);
                   return (
-                    <g key={s}>
+                    <g key={idx}>
                       <line x1={padLeft} y1={y} x2={width - padRight} y2={y} stroke="var(--border-subtle)" strokeDasharray="3 3" />
-                      <text x={padLeft - 6} y={y + 3} fill="var(--text-muted)" fontSize="9" textAnchor="end">{s}.0</text>
+                      <text x={padLeft - 6} y={y + 3} fill="var(--text-muted)" fontSize="9" textAnchor="end">{item.label}</text>
                     </g>
                   );
                 })}
@@ -1754,7 +1804,7 @@
                   fontWeight="600"
                   textAnchor="end"
                 >
-                  Usual range ({usualRange.min} &ndash; {usualRange.max})
+                  Usual baseline: {usualCategory}
                 </text>
 
                 {/* Trend Line */}
@@ -1798,7 +1848,7 @@
                   }}
                 >
                   <span className="font-semibold">{points[hoveredPoint].date} ({points[hoveredPoint].dayName}):</span>{" "}
-                  {points[hoveredPoint].score} out of 5 &bull; {points[hoveredPoint].isWeekend ? "Weekend" : points[hoveredPoint].status}
+                  {points[hoveredPoint].category} &bull; {points[hoveredPoint].isWeekend ? "Weekend" : points[hoveredPoint].status}
                 </div>
               )}
             </div>
@@ -1816,25 +1866,25 @@
             {[
               {
                 title: "Physical tiredness",
-                score: batSummary.today_exhaustion || 1.4,
+                category: batSummary.today_exhaustion_category || getBatPercentileCategory(batSummary.today_exhaustion || 1.4, "exhaustion"),
                 subtitle: "Energy & physical recovery",
                 desc: "Reflects feelings of physical tiredness and energy levels after work."
               },
               {
                 title: "Motivation & energy",
-                score: batSummary.today_mental_distance || 1.3,
+                category: batSummary.today_mental_distance_category || getBatPercentileCategory(batSummary.today_mental_distance || 1.3, "mental_distance"),
                 subtitle: "Work engagement",
                 desc: "Reflects enthusiasm, purpose, and connection to your daily tasks."
               },
               {
                 title: "Daily stress & mood",
-                score: batSummary.today_emotional || 1.3,
+                category: batSummary.today_emotional_category || batSummary.today_emotional_impairment_category || getBatPercentileCategory(batSummary.today_emotional || 1.3, "emotional_impairment"),
                 subtitle: "Emotional balance",
                 desc: "Reflects mood stability, calm, and patience during busy periods."
               },
               {
                 title: "Mental focus",
-                score: batSummary.today_cognitive || 1.3,
+                category: batSummary.today_cognitive_category || batSummary.today_cognitive_impairment_category || getBatPercentileCategory(batSummary.today_cognitive || 1.3, "cognitive_impairment"),
                 subtitle: "Focus & concentration",
                 desc: "Tracks your ability to stay attentive, clear-headed, and avoid mistakes."
               }
@@ -1842,8 +1892,8 @@
               <div key={i} className="ws-card p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">{dim.title}</span>
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[var(--primary-subtle)] text-[var(--primary)]">
-                    {Number(dim.score).toFixed(1)} / 5
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getCategoryBadgeClass(dim.category)}`}>
+                    {dim.category}
                   </span>
                 </div>
                 <div className="text-sm font-bold text-[var(--text-primary)]">{dim.subtitle}</div>
@@ -3056,7 +3106,7 @@
         } else {
           const initial = {};
           BAT12_QUESTIONS.forEach(q => {
-            initial[q.key] = batResponses[q.key] !== undefined ? batResponses[q.key] : 2;
+            initial[q.key] = null;
           });
           setBatResponses(initial);
         }
@@ -5766,7 +5816,7 @@
     }
 
     // =========================================================================
-    // DAY CHECK-IN MULTI-STEP MODAL (4 Groups, One Group Per Step, Skip Option)
+    // DAY CHECK-IN MULTI-STEP MODAL (4 Groups, One Group Per Step, Required Selection)
     // =========================================================================
     function DayCheckInModal({ responses, setResponses, onSubmit, onClose, submitting, success, isEarlyCheckin }) {
       const [step, setStep] = useState(1); // 1 to 4
@@ -5782,16 +5832,18 @@
 
       const currentGroup = BAT12_GROUPS[step - 1] || BAT12_GROUPS[0];
 
+      // Check whether every question in current step has an explicit selection (1 to 5)
+      const isCurrentStepComplete = currentGroup.questions.every(
+        (q) => responses[q.key] !== null && responses[q.key] !== undefined && Number(responses[q.key]) >= 1 && Number(responses[q.key]) <= 5
+      );
+
+      // Check whether all questions in entire survey are completed
+      const isAllComplete = BAT12_QUESTIONS.every(
+        (q) => responses[q.key] !== null && responses[q.key] !== undefined && Number(responses[q.key]) >= 1 && Number(responses[q.key]) <= 5
+      );
+
       const handleRating = (key, val) => {
         setResponses(prev => ({ ...prev, [key]: val }));
-      };
-
-      const handleSkip = (key) => {
-        setResponses(prev => ({ ...prev, [key]: null }));
-      };
-
-      const handleUnskip = (key) => {
-        setResponses(prev => ({ ...prev, [key]: 2 }));
       };
 
       // Progress bar percentage
@@ -5842,7 +5894,7 @@
             <div className="space-y-5">
               {currentGroup.questions.map((q) => {
                 const currentVal = responses[q.key];
-                const isSkipped = currentVal === null || currentVal === undefined;
+                const isSelectedAny = currentVal !== null && currentVal !== undefined && Number(currentVal) >= 1 && Number(currentVal) <= 5;
 
                 return (
                   <div
@@ -5854,9 +5906,9 @@
                       <span className="font-semibold text-sm text-[var(--text-primary)]">
                         {q.id}. {q.text}
                       </span>
-                      {isSkipped && (
-                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-[var(--bg-card-subtle)] text-[var(--text-muted)] font-semibold shrink-0">
-                          Skipped
+                      {!isSelectedAny && (
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-[var(--bg-card-subtle)] text-[var(--text-muted)] font-medium shrink-0">
+                          Required
                         </span>
                       )}
                     </div>
@@ -5870,7 +5922,7 @@
                         { val: 4, label: "Often" },
                         { val: 5, label: "Always" },
                       ].map((opt) => {
-                        const isSelected = !isSkipped && currentVal === opt.val;
+                        const isSelected = isSelectedAny && currentVal === opt.val;
                         return (
                           <button
                             key={opt.val}
@@ -5889,30 +5941,6 @@
                           </button>
                         );
                       })}
-                    </div>
-
-                    {/* Skip Option on Every Item */}
-                    <div className="mt-2.5 flex items-center justify-end">
-                      {isSkipped ? (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-[var(--text-muted)] italic">Question skipped</span>
-                          <button
-                            type="button"
-                            onClick={() => handleUnskip(q.key)}
-                            className="text-xs text-[var(--primary)] font-semibold hover:underline"
-                          >
-                            Undo
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleSkip(q.key)}
-                          className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline transition-colors"
-                        >
-                          Skip this question
-                        </button>
-                      )}
                     </div>
                   </div>
                 );
@@ -5945,18 +5973,30 @@
                 {step < 4 ? (
                   <button
                     type="button"
-                    onClick={() => setStep(step + 1)}
-                    className="ws-btn-primary text-xs py-2.5 px-5 flex items-center gap-2"
+                    onClick={() => {
+                      if (isCurrentStepComplete) setStep(step + 1);
+                    }}
+                    disabled={!isCurrentStepComplete}
+                    className={`ws-btn-primary text-xs py-2.5 px-6 shadow-xs font-bold transition-all ${
+                      !isCurrentStepComplete ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
                   >
-                    <span>Next: {BAT12_GROUPS[step].title}</span>
-                    <span>&rarr;</span>
+                    Next
                   </button>
                 ) : (
                   <button
                     type="button"
-                    onClick={onSubmit}
-                    disabled={submitting}
-                    className="ws-btn-primary text-xs py-2.5 px-6 shadow-xs font-bold"
+                    onClick={() => {
+                      if (isCurrentStepComplete && isAllComplete && !submitting) {
+                        onSubmit();
+                      }
+                    }}
+                    disabled={submitting || !isCurrentStepComplete || !isAllComplete}
+                    className={`ws-btn-primary text-xs py-2.5 px-6 shadow-xs font-bold transition-all ${
+                      submitting || !isCurrentStepComplete || !isAllComplete
+                        ? "opacity-50 cursor-not-allowed"
+                        : ""
+                    }`}
                   >
                     {submitting ? "Submitting..." : success ? "✓ Check-in recorded!" : "Submit check-in"}
                   </button>

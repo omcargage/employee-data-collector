@@ -54,6 +54,39 @@ class BAT12Summary:
     total_bat_score: float
     verified_stressed_day: bool
     clinical_status: str
+    category: str = "Low"
+    exhaustion_category: str = "Low"
+    mental_distance_category: str = "Low"
+    emotional_impairment_category: str = "Low"
+    cognitive_impairment_category: str = "Low"
+
+
+def get_bat_percentile_category(score: float, dimension: str = "total") -> str:
+    """Map numerical score to percentile category according to official BAT norm tables.
+    
+    BAT-12 Norm Percentiles (Schaufeli et al.):
+    - Low: score < 25th percentile
+    - Average: 25th <= score < 75th percentile
+    - High: 75th <= score < 95th percentile
+    - Very high: score >= 95th percentile
+    """
+    s = float(score)
+    # Norm cutoffs: (p25, p75, p95)
+    if dimension in ("exhaustion", "cognitive_impairment", "cognitive"):
+        p25, p75, p95 = 1.67, 2.67, 3.67
+    elif dimension in ("mental_distance", "emotional_impairment", "emotional"):
+        p25, p75, p95 = 1.33, 2.33, 3.33
+    else:  # total
+        p25, p75, p95 = 1.67, 2.67, 3.65
+
+    if s < p25:
+        return "Low"
+    elif s < p75:
+        return "Average"
+    elif s < p95:
+        return "High"
+    else:
+        return "Very high"
 
 
 def validate_rating(name: str, value: int) -> int:
@@ -64,7 +97,7 @@ def validate_rating(name: str, value: int) -> int:
 
 
 def compute_bat12_scores(items: Dict[str, int], logical_day: Optional[date] = None) -> BAT12Summary:
-    """Compute subscales, total mean, clinical cutoff status, and stress verification flag."""
+    """Compute subscales, total mean, clinical cutoff status, percentile categories, and stress verification flag."""
     day_str = (logical_day or datetime.now(timezone.utc).date()).isoformat()
 
     # Validate all 12 items
@@ -95,6 +128,14 @@ def compute_bat12_scores(items: Dict[str, int], logical_day: Optional[date] = No
     else:
         clinical_status = "Green"
 
+    # Official BAT-12 Percentile Category Mapping:
+    # Low (< p25), Average (p25 <= score < p75), High (p75 <= score < p95), Very high (score >= p95)
+    cat_total = get_bat_percentile_category(total_score, "total")
+    cat_ex = get_bat_percentile_category(ex_score, "exhaustion")
+    cat_md = get_bat_percentile_category(md_score, "mental_distance")
+    cat_ei = get_bat_percentile_category(ei_score, "emotional_impairment")
+    cat_ci = get_bat_percentile_category(ci_score, "cognitive_impairment")
+
     # Daily verified stress flag: True if total >= 3.02 or exhaustion >= 3.33
     is_stressed = bool(total_score >= 3.02 or ex_score >= 3.33)
 
@@ -108,6 +149,11 @@ def compute_bat12_scores(items: Dict[str, int], logical_day: Optional[date] = No
         total_bat_score=round(total_score, 3),
         verified_stressed_day=is_stressed,
         clinical_status=clinical_status,
+        category=cat_total,
+        exhaustion_category=cat_ex,
+        mental_distance_category=cat_md,
+        emotional_impairment_category=cat_ei,
+        cognitive_impairment_category=cat_ci,
     )
 
 
