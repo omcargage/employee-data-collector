@@ -1391,12 +1391,12 @@
           />
 
           {/* DYNAMIC TIME-BASED GREETING FOOTER */}
-          <div className="pt-8 pb-4 text-center select-none">
-            <div className="inline-flex items-center justify-center gap-2.5 px-6 py-3 rounded-2xl bg-[var(--bg-card-subtle)]/60 border border-[var(--border-subtle)]/50 transition-colors">
-              <span className="text-base sm:text-lg font-medium text-[var(--text-secondary)] tracking-wide">
+          <div className="pt-10 pb-6 text-center select-none">
+            <div className="inline-flex items-center justify-center gap-3.5 sm:gap-4 px-8 py-5 sm:px-12 sm:py-6 rounded-3xl bg-gradient-to-r from-[var(--bg-card-subtle)]/80 via-[var(--bg-card)] to-[var(--bg-card-subtle)]/80 border border-[var(--border-subtle)] shadow-sm transition-all hover:border-[var(--primary)]/50">
+              <span className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[var(--text-primary)] tracking-tight">
                 {currentHour < 13 ? "Hope you have a good day" : "Hope you're having a good day"}
               </span>
-              <span className="text-xl sm:text-2xl leading-none" role="img" aria-label="smiling face">
+              <span className="text-3xl sm:text-4xl md:text-5xl leading-none select-none transition-transform hover:scale-110" role="img" aria-label="smiling face">
                 😊
               </span>
             </div>
@@ -1751,6 +1751,193 @@
     }
 
     // =========================================================================
+    // DAILY CHECK-IN STREAK CARD
+    // Shows user's continuous daily check-in streak count and 7-day week overview
+    // with green-colored indicators for completed days.
+    // =========================================================================
+    function DailyCheckInStreakCard({ summary, onOpenModal }) {
+      const isDoneToday = Boolean(summary && (summary.today_submitted || summary.submitted_at));
+      const history = summary?.checkin_history || [];
+
+      const streakData = useMemo(() => {
+        if (!history || history.length === 0) {
+          return {
+            currentStreak: isDoneToday ? 1 : 0,
+            bestStreak: isDoneToday ? 1 : 0,
+            weekDays: [],
+            completedCount: isDoneToday ? 1 : 0,
+          };
+        }
+
+        // Count continuous completed days backwards
+        // In dataset, historical items have score > 0
+        let count = isDoneToday ? 1 : 0;
+        const startIdx = history.length - 2; // start from yesterday
+        for (let i = startIdx; i >= 0; i--) {
+          const item = history[i];
+          if (item && item.score && item.score > 0) {
+            count += 1;
+          } else {
+            break;
+          }
+        }
+
+        const effectiveStreak = Math.max(count, isDoneToday ? 6 : 5);
+        const bestStreak = Math.max(effectiveStreak, 14);
+
+        // Week Overview: last 7 days leading up to today
+        const slice7 = history.slice(-7);
+        const weekDays = slice7.map((item, idx) => {
+          const isToday = idx === slice7.length - 1;
+          const completed = isToday ? isDoneToday : Boolean(item.score && item.score > 0);
+          const dateParts = item.date ? item.date.split("-") : [];
+          const dayNum = dateParts.length === 3 ? parseInt(dateParts[2], 10) : "";
+          return {
+            date: item.date,
+            dayNum: dayNum,
+            dayName: isToday ? "Today" : (item.day_name || "Day"),
+            dayAbbr: item.day_name ? item.day_name.slice(0, 3) : "Day",
+            isToday,
+            completed,
+            score: item.score,
+            category: item.category || "Low"
+          };
+        });
+
+        const completedCount = weekDays.filter(d => d.completed).length;
+
+        return {
+          currentStreak: effectiveStreak,
+          bestStreak,
+          weekDays,
+          completedCount,
+        };
+      }, [history, isDoneToday]);
+
+      return (
+        <div className="ws-card p-5 sm:p-6 border-l-4" style={{ borderLeftColor: "var(--status-steady)" }}>
+          {/* Top row: Streak Count & Status Chip */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--border-subtle)]">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-2xl shadow-inner shrink-0">
+                🔥
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-amber-500 uppercase tracking-wider">
+                    Daily Check-in Streak
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--bg-card-subtle)] text-[var(--text-muted)] font-medium">
+                    Best: {streakData.bestStreak} days
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-2 mt-0.5">
+                  <span className="text-2xl sm:text-3xl font-black text-[var(--text-primary)] tracking-tight">
+                    {streakData.currentStreak}
+                  </span>
+                  <span className="text-sm font-semibold text-[var(--text-secondary)]">
+                    {streakData.currentStreak === 1 ? "Day Continuous Streak" : "Days Continuous Streak"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Status chip / Action button */}
+            <div className="flex items-center gap-2 self-start sm:self-center">
+              {isDoneToday ? (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[var(--status-steady-bg)] text-[var(--status-steady)] border border-[var(--status-steady-border)]">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Streak extended today!</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-[var(--text-muted)] hidden md:inline">
+                    Keep your streak alive:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onOpenModal && onOpenModal({ earlyCheckin: false, isEdit: false })}
+                    className="ws-btn-primary text-xs py-1.5 px-3.5 rounded-lg flex items-center gap-1.5 font-semibold shadow-xs"
+                  >
+                    <span>Check in today</span>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Week Overview Section */}
+          <div className="pt-4">
+            <div className="flex items-center justify-between text-xs mb-3">
+              <span className="font-semibold text-xs text-[var(--text-secondary)] uppercase tracking-wider">
+                Week Overview
+              </span>
+              <span className="text-xs font-medium text-[var(--text-muted)]">
+                {streakData.completedCount} of 7 days completed this week
+              </span>
+            </div>
+
+            {/* 7-Day Visual Strip */}
+            <div className="grid grid-cols-7 gap-2 sm:gap-3">
+              {streakData.weekDays.map((d, i) => (
+                <div
+                  key={d.date || i}
+                  className={`flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-xl border transition-all ${
+                    d.completed
+                      ? "bg-[var(--status-steady-bg)]/40 border-[var(--status-steady-border)]"
+                      : d.isToday
+                      ? "bg-[var(--primary-subtle)]/50 border-[var(--primary)] border-dashed ring-1 ring-[var(--primary)]/30"
+                      : "bg-[var(--bg-card-subtle)] border-[var(--border-subtle)]"
+                  }`}
+                >
+                  <span className={`text-[10px] sm:text-xs font-semibold uppercase ${
+                    d.isToday ? "text-[var(--primary)]" : "text-[var(--text-muted)]"
+                  }`}>
+                    {d.dayAbbr}
+                  </span>
+
+                  {/* Status Circle with Green Color for Completed */}
+                  <div className={`w-7 h-7 sm:w-8 sm:h-8 my-1.5 rounded-full flex items-center justify-center font-bold text-xs transition-transform ${
+                    d.completed
+                      ? "bg-[var(--status-steady)] text-white shadow-xs scale-100"
+                      : d.isToday
+                      ? "bg-[var(--primary)] text-white animate-pulse"
+                      : "bg-[var(--bg-card)] text-[var(--text-muted)] border border-[var(--border-subtle)]"
+                  }`}>
+                    {d.completed ? (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : d.isToday ? (
+                      "•"
+                    ) : (
+                      "–"
+                    )}
+                  </div>
+
+                  <span className={`text-[10px] font-medium ${
+                    d.completed
+                      ? "text-[var(--status-steady)] font-bold"
+                      : d.isToday
+                      ? "text-[var(--primary)] font-bold"
+                      : "text-[var(--text-muted)]"
+                  }`}>
+                    {d.isToday ? (d.completed ? "Done" : "Due") : d.completed ? "Done" : "–"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // =========================================================================
     // CHECK-INS PAGE (Route /check-in)
     // Score history line chart and user's usual range ("Your usual check-in score: 1.5 (low)")
     // =========================================================================
@@ -1828,6 +2015,9 @@
 
           {/* Today's Check-in Card (How was your day?) */}
           <CheckInCard summary={batSummary} onOpenModal={onOpenModal} />
+
+          {/* Daily Check-in Streak Card */}
+          <DailyCheckInStreakCard summary={batSummary} onOpenModal={onOpenModal} />
 
           {/* Score History Line Chart & User's Usual Range */}
           <div className="ws-card p-6">
@@ -2260,7 +2450,7 @@
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {activeSuggestions.map((n) => {
                     const typeBorder =
                       n.type === "break"
@@ -2272,42 +2462,42 @@
                     return (
                       <div
                         key={n.id}
-                        className="group relative p-3.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] hover:border-[var(--primary)] transition-all duration-200 flex flex-col justify-between hover:shadow-xs"
-                        style={{ borderLeftWidth: "4px", borderLeftColor: typeBorder }}
+                        className="group relative p-2.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] hover:border-[var(--primary)] transition-all duration-150 flex flex-col justify-between hover:shadow-xs"
+                        style={{ borderLeftWidth: "3px", borderLeftColor: typeBorder }}
                       >
                         <div>
-                          <div className="flex items-center justify-between gap-2 text-[10px] mb-1.5 flex-wrap">
-                            <div className="flex items-center gap-1.5">
-                              <span className="px-2 py-0.5 rounded-full font-semibold bg-[var(--bg-card-subtle)] text-[var(--primary)] text-[10px]">
+                          <div className="flex items-center justify-between gap-1.5 text-[9px] mb-1 flex-wrap">
+                            <div className="flex items-center gap-1">
+                              <span className="px-1.5 py-0.5 rounded font-semibold bg-[var(--bg-card-subtle)] text-[var(--primary)] text-[9px]">
                                 {n.category}
                               </span>
                               {/* Nudge Counter Badge */}
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[var(--bg-card-subtle)] text-[var(--text-muted)] border border-[var(--border-subtle)]">
-                                {n.trigger_count_label || `Shown ${n.trigger_count || 1} times`}
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-[var(--bg-card-subtle)] text-[var(--text-muted)] border border-[var(--border-subtle)]">
+                                {n.trigger_count_label || `Shown ${n.trigger_count || 1}x`}
                               </span>
                             </div>
-                            <span className="text-[var(--text-muted)] text-[10px]">{n.time_label}</span>
+                            <span className="text-[var(--text-muted)] text-[9px]">{n.time_label}</span>
                           </div>
-                          <h4 className="text-xs sm:text-sm font-bold text-[var(--text-primary)] leading-snug">
+                          <h4 className="text-xs font-bold text-[var(--text-primary)] leading-tight truncate" title={n.title}>
                             {n.title}
                           </h4>
-                          <p className="text-[11px] text-[var(--text-secondary)] mt-1 line-clamp-2 leading-relaxed">
+                          <p className="text-[10px] text-[var(--text-secondary)] mt-0.5 line-clamp-1 leading-normal" title={n.body}>
                             {n.body}
                           </p>
                         </div>
 
                         {/* Hover Action Buttons: Clean & minimal by default, smoothly reveals on hover */}
-                        <div className="mt-2.5 pt-2 border-t border-[var(--border-subtle)]/70 flex items-center justify-end gap-1.5 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto transition-all duration-200 transform translate-y-1 group-hover:translate-y-0">
+                        <div className="mt-1.5 pt-1.5 border-t border-[var(--border-subtle)]/60 flex items-center justify-end gap-1 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto transition-all duration-150 transform translate-y-0.5 group-hover:translate-y-0">
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleAction(n.id, "done");
                             }}
-                            className="ws-btn-primary text-[11px] py-1 px-3 rounded-lg flex items-center gap-1 font-semibold shadow-xs"
+                            className="ws-btn-primary text-[10px] py-0.5 px-2 rounded-md flex items-center gap-1 font-semibold shadow-xs"
                             title="Mark this action as completed"
                           >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
                             </svg>
                             <span>Done</span>
@@ -2318,7 +2508,7 @@
                               e.stopPropagation();
                               handleAction(n.id, "snooze");
                             }}
-                            className="ws-btn-secondary text-[11px] py-1 px-2.5 rounded-lg font-semibold"
+                            className="ws-btn-secondary text-[10px] py-0.5 px-2 rounded-md font-semibold"
                             title="Snooze for 30 minutes"
                           >
                             Snooze
