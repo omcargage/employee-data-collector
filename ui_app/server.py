@@ -22,6 +22,7 @@ from datetime import date, datetime, timedelta, timezone
 import json
 import threading
 import time
+import zoneinfo
 import numpy as np
 import pandas as pd
 import torch
@@ -149,6 +150,14 @@ def start_live_collector():
         print(f"[WorkSense] Live EDC agent background collector note: {e}")
 
 
+def _get_local_tz() -> timezone | zoneinfo.ZoneInfo:
+    """Resolve user's local timezone (Asia/Kolkata) with fixed-offset fallback."""
+    try:
+        return zoneinfo.ZoneInfo("Asia/Kolkata")
+    except Exception:
+        return timezone(timedelta(hours=5, minutes=30))
+
+
 def build_live_employee_dashboard() -> Dict[str, Any]:
     """Build employee dashboard for live workstation mode (Omkar Gage)."""
     db = DATA_CACHE.get("db")
@@ -159,6 +168,10 @@ def build_live_employee_dashboard() -> Dict[str, Any]:
         except Exception:
             db = None
 
+    local_tz = _get_local_tz()
+    now_local = datetime.now(local_tz)
+    today_str = now_local.strftime("%Y-%m-%d")
+
     rollups_15min = []
     if db:
         try:
@@ -166,117 +179,238 @@ def build_live_employee_dashboard() -> Dict[str, Any]:
         except Exception as e:
             print(f"[WorkSense] Error fetching 15min rollups: {e}")
 
+    # Group 15-min rollups by LOCAL calendar day (Asia/Kolkata) rather than UTC
     day_groups: Dict[str, List[Any]] = {}
     for r in rollups_15min:
-        d_str = r.window_start.strftime("%Y-%m-%d") if hasattr(r.window_start, "strftime") else str(r.window_start)[:10]
-        if d_str not in day_groups:
-            day_groups[d_str] = []
-        day_groups[d_str].append(r)
+        ws = getattr(r, "window_start", None)
+        if isinstance(ws, datetime):
+            if ws.tzinfo is None:
+                ws = ws.replace(tzinfo=timezone.utc)
+            d_str = ws.astimezone(local_tz).strftime("%Y-%m-%d")
+        else:
+            d_str = str(ws)[:10]
+        day_groups.setdefault(d_str, []).append(r)
 
-    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    sorted_days = sorted(day_groups.keys())
-    if today_str not in day_groups:
-        sorted_days.append(today_str)
-        day_groups[today_str] = []
+    # Load ALL persisted BAT-12 check-in responses from SQLite self_reports
+    bat_by_day: Dict[str, Dict[str, Any]] = {}
+    if db:
+        try:
+            for row in db.get_self_reports():
+                if row["label"] == "bat12":
+                    try:
+                        payload = json.loads(row["value"])
+                        d_key = payload.get("logical_day")
+                        if not d_key:
+                            continue
+                        total_s = float(payload.get("total_bat_score", 1.5))
+                        ex_s = float(payload.get("exhaustion_score", 1.4))
+                        md_s = float(payload.get("mental_distance_score", 1.3))
+                        ei_s = float(payload.get("emotional_impairment_score", 1.3))
+                        ci_s = float(payload.get("cognitive_impairment_score", 1.3))
+                        bat_by_day[d_key] = {
+                            "logical_day": d_key,
+                            "total_bat_score": round(total_s, 3),
+                            "category": payload.get("category") or get_bat_percentile_category(total_s, "total"),
+                            "clinical_status": payload.get("clinical_status", "Green"),
+                            "exhaustion_score": round(ex_s, 3),
+                            "exhaustion_category": payload.get("exhaustion_category") or get_bat_percentile_category(ex_s, "exhaustion"),
+                            "mental_distance_score": round(md_s, 3),
+                            "mental_distance_category": payload.get("mental_distance_category") or get_bat_percentile_category(md_s, "mental_distance"),
+                            "emotional_impairment_score": round(ei_s, 3),
+                            "emotional_category": payload.get("emotional_impairment_category") or get_bat_percentile_category(ei_s, "emotional_impairment"),
+                            "cognitive_impairment_score": round(ci_s, 3),
+                            "cognitive_category": payload.get("cognitive_impairment_category") or get_bat_percentile_category(ci_s, "cognitive_impairment"),
+                            "verified_stressed_day": bool(payload.get("verified_stressed_day", False)),
+                            "early_checkin": False,
+                            "submitted_at": row["ts_utc"],
+                            "raw_responses": payload.get("items") or {},
+                        }
+                    except Exception:
+                        continue
+        except Exception as e:
+            print(f"[WorkSense] Error loading self_reports from DB: {e}")
 
-    active_days_count = len([d for d, rlist in day_groups.items() if len(rlist) > 0])
-    days_collected = max(1, active_days_count)
+    # Overlay any date-specific in-memory submissions (preserves early_checkin & immediate edits)
+    for cache_k, cache_v in DATA_CACHE.get("recent_bat_submissions", {}).items():
+        if (cache_k.startswith("OMKAR_GAGE:") or cache_k.startswith("LOCAL_DESKTOP_AGENT:")) and not cache_k.endswith(":latest"):
+            d_key = cache_k.split(":", 1)[1]
+            if d_key and len(d_key) == 10:
+                bat_by_day[d_key] = {**bat_by_day.get(d_key, {}), **cache_v, "logical_day": d_key}
+
+    # Count distinct active observation days across telemetry rollups, check-ins, and live today
+    rollup_days = {d for d, rlist in day_groups.items() if len(rlist) > 0}
+    checkin_days = set(bat_by_day.keys())
+    lc = DATA_CACHE.get("lifecycle")
+    live_active_today = bool(lc is not None and lc.status == "collecting")
+
+    observed_days = rollup_days | checkin_days
+    if live_active_today or today_str in day_groups or today_str in checkin_days:
+        observed_days.add(today_str)
+
+    days_collected = max(1, len(observed_days))
+    bat12_completed = len(checkin_days)
     is_calibrated = days_collected >= 14
 
+    # Build a continuous calendar timeline (no skipped weekday/weekend gaps!)
+    # Covers from earliest observed date (capped at 30 days) or at least 7 days ending today.
+    today_dt = datetime.strptime(today_str, "%Y-%m-%d").date()
+    default_start = today_dt - timedelta(days=6)
+    if observed_days:
+        earliest_dt = datetime.strptime(min(observed_days), "%Y-%m-%d").date()
+        min_window_dt = today_dt - timedelta(days=29)
+        start_dt = max(min(earliest_dt, default_start), min_window_dt)
+    else:
+        start_dt = default_start
+
+    calendar_dates: List[date] = []
+    cur_dt = start_dt
+    while cur_dt <= today_dt:
+        calendar_dates.append(cur_dt)
+        cur_dt += timedelta(days=1)
+
     daily_items = []
-    for d_str in sorted_days:
-        rlist = day_groups[d_str]
-        dt = datetime.strptime(d_str, "%Y-%m-%d")
-        is_wknd = dt.weekday() >= 5
+    active_daily_metrics = []
+    for dt_obj in calendar_dates:
+        d_str = dt_obj.strftime("%Y-%m-%d")
+        rlist = day_groups.get(d_str, [])
+        is_wknd = dt_obj.weekday() >= 5
+        has_rollup = len(rlist) > 0
+        b = bat_by_day.get(d_str)
 
-        total_covered_mins = sum(getattr(r, "active_minutes", 15 * getattr(r, "coverage_ratio", 1.0)) for r in rlist) if rlist else 0.0
+        if has_rollup:
+            total_covered_mins = sum(getattr(r, "active_minutes", 15 * getattr(r, "coverage_ratio", 1.0)) for r in rlist)
+            longest_stretch = 0
+            curr_stretch = 0
+            for r in rlist:
+                keys = getattr(r, "total_keystrokes", None) or 0
+                clicks = getattr(r, "click_count", None) or 0
+                cov = getattr(r, "coverage_ratio", 0.0)
+                if keys > 0 or clicks > 0 or cov > 0.5:
+                    curr_stretch += 15
+                    if curr_stretch > longest_stretch:
+                        longest_stretch = curr_stretch
+                else:
+                    curr_stretch = 0
 
-        longest_stretch = 0
-        curr_stretch = 0
-        for r in rlist:
-            keys = getattr(r, "total_keystrokes", None) or 0
-            clicks = getattr(r, "click_count", None) or 0
-            cov = getattr(r, "coverage_ratio", 0.0)
-            if keys > 0 or clicks > 0 or cov > 0.5:
-                curr_stretch += 15
-                if curr_stretch > longest_stretch:
-                    longest_stretch = curr_stretch
-            else:
-                curr_stretch = 0
+            lunch_mins = 45.0
+            focus_mins = max(30.0, min(240.0, total_covered_mins * 0.6))
 
-        lunch_mins = 45.0
-        focus_mins = max(30.0, min(240.0, total_covered_mins * 0.6)) if rlist else 0.0
+            after_hours_mins = 0.0
+            for r in rlist:
+                hr = getattr(r, "hour_of_day", None)
+                if hr is None and hasattr(r, "window_start"):
+                    ws_r = r.window_start
+                    if isinstance(ws_r, datetime):
+                        if ws_r.tzinfo is None:
+                            ws_r = ws_r.replace(tzinfo=timezone.utc)
+                        hr = ws_r.astimezone(local_tz).hour
+                if hr is not None and (hr < 9 or hr >= 18):
+                    after_hours_mins += 15 * getattr(r, "coverage_ratio", 1.0)
 
-        after_hours_mins = 0.0
-        for r in rlist:
-            hr = getattr(r, "hour_of_day", None)
-            if hr is None and hasattr(r, "window_start"):
-                hr = r.window_start.hour if hasattr(r.window_start, "hour") else int(str(r.window_start)[11:13])
-            if hr is not None and (hr < 9 or hr >= 18):
-                after_hours_mins += 15 * getattr(r, "coverage_ratio", 1.0)
+            wpms = [r.gross_wpm for r in rlist if getattr(r, "gross_wpm", None) and r.gross_wpm > 0]
+            mean_wpm = float(np.mean(wpms)) if wpms else (32.0 if not is_wknd else 0.0)
 
-        wpms = [r.gross_wpm for r in rlist if getattr(r, "gross_wpm", None) and r.gross_wpm > 0]
-        mean_wpm = float(np.mean(wpms)) if wpms else (32.0 if not is_wknd else 0.0)
+            backspaces = [r.backspace_ratio for r in rlist if getattr(r, "backspace_ratio", None) is not None]
+            mean_bs = float(np.mean(backspaces)) * 100 if backspaces else 6.5
 
-        backspaces = [r.backspace_ratio for r in rlist if getattr(r, "backspace_ratio", None) is not None]
-        mean_bs = float(np.mean(backspaces)) * 100 if backspaces else 6.5
+            speeds = [r.average_speed_px_s for r in rlist if getattr(r, "average_speed_px_s", None) and r.average_speed_px_s > 0]
+            mean_speed = float(np.mean(speeds)) if speeds else 260.0
 
-        speeds = [r.average_speed_px_s for r in rlist if getattr(r, "average_speed_px_s", None) and r.average_speed_px_s > 0]
-        mean_speed = float(np.mean(speeds)) if speeds else 260.0
-
-        daily_items.append({
-            "date": d_str,
-            "day_name": dt.strftime("%a"),
-            "is_weekend": is_wknd,
-            "stretch_mins": round(float(longest_stretch or (55.0 if not is_wknd else 0)), 1),
-            "lunch_mins": round(float(lunch_mins), 1),
-            "focus_mins": round(float(focus_mins or (110.0 if not is_wknd else 0)), 1),
-            "after_hours_mins": round(float(after_hours_mins), 1),
-            "after_hours_msgs": 0,
-            "wpm": round(mean_wpm, 1),
-            "backspace_ratio": round(mean_bs, 1),
-            "mouse_speed": round(min(600.0, mean_speed), 1),
-            "bat_score": 1.5,
-            "bat_status": "Green",
-        })
-
-    if len(daily_items) < 7:
-        first_dt = datetime.strptime(daily_items[0]["date"], "%Y-%m-%d")
-        missing_count = 7 - len(daily_items)
-        pad_items = []
-        for i in range(missing_count, 0, -1):
-            pad_d = first_dt - timedelta(days=i)
-            pad_is_wknd = pad_d.weekday() >= 5
-            pad_items.append({
-                "date": pad_d.strftime("%Y-%m-%d"),
-                "day_name": pad_d.strftime("%a"),
-                "is_weekend": pad_is_wknd,
-                "stretch_mins": 0.0 if pad_is_wknd else 50.0,
-                "lunch_mins": 45.0,
-                "focus_mins": 0.0 if pad_is_wknd else 95.0,
+            item_dict = {
+                "date": d_str,
+                "day_name": dt_obj.strftime("%a"),
+                "is_weekend": is_wknd,
+                "stretch_mins": round(float(longest_stretch or (15.0 if not is_wknd else 0.0)), 1),
+                "lunch_mins": round(float(lunch_mins), 1),
+                "focus_mins": round(float(focus_mins), 1),
+                "after_hours_mins": round(float(after_hours_mins), 1),
+                "after_hours_msgs": 0,
+                "wpm": round(mean_wpm, 1),
+                "backspace_ratio": round(mean_bs, 1),
+                "mouse_speed": round(min(600.0, mean_speed), 1),
+                "bat_score": b["total_bat_score"] if b else None,
+                "bat_status": b["clinical_status"] if b else ("Green" if not is_wknd else None),
+            }
+            active_daily_metrics.append(item_dict)
+        else:
+            # Inactive / prior gap day with no closed 15-min rollup
+            item_dict = {
+                "date": d_str,
+                "day_name": dt_obj.strftime("%a"),
+                "is_weekend": is_wknd,
+                "stretch_mins": 0.0,
+                "lunch_mins": 0.0,
+                "focus_mins": 0.0,
                 "after_hours_mins": 0.0,
                 "after_hours_msgs": 0,
-                "wpm": 0.0 if pad_is_wknd else 30.0,
-                "backspace_ratio": 6.0,
-                "mouse_speed": 250.0,
-                "bat_score": 1.5,
-                "bat_status": "Green",
-            })
-        full_telemetry = pad_items + daily_items
+                "wpm": 0.0,
+                "backspace_ratio": 0.0,
+                "mouse_speed": 0.0,
+                "bat_score": b["total_bat_score"] if b else None,
+                "bat_status": b["clinical_status"] if b else None,
+            }
+        daily_items.append(item_dict)
+
+    recent_7d_telemetry = daily_items[-7:]
+    recent_30d_telemetry = daily_items[-30:]
+
+    recent_bat = bat_by_day.get(today_str)
+
+    # Personal usual BAT baseline computed from all actual submitted check-ins
+    if bat_by_day:
+        sub_scores = [v["total_bat_score"] for v in bat_by_day.values()]
+        usual_bat_val = round(float(sum(sub_scores) / len(sub_scores)), 2)
     else:
-        full_telemetry = daily_items
+        usual_bat_val = 1.5
+    usual_cat = get_bat_percentile_category(usual_bat_val, "total")
 
-    recent_7d_telemetry = full_telemetry[-7:]
-    recent_30d_telemetry = full_telemetry[-30:]
+    today_score_val = recent_bat["total_bat_score"] if recent_bat else usual_bat_val
+    today_cat = recent_bat.get("category", get_bat_percentile_category(today_score_val, "total")) if recent_bat else usual_cat
 
-    recent_bat = DATA_CACHE["recent_bat_submissions"].get(f"OMKAR_GAGE:{today_str}")
-    if not recent_bat:
-        recent_bat = DATA_CACHE["recent_bat_submissions"].get("OMKAR_GAGE:latest")
-    if not recent_bat:
-        recent_bat = DATA_CACHE["recent_bat_submissions"].get(f"LOCAL_DESKTOP_AGENT:{today_str}")
+    today_ex_val = recent_bat.get("exhaustion_score", 1.4) if recent_bat else 1.4
+    today_md_val = recent_bat.get("mental_distance_score", 1.3) if recent_bat else 1.3
+    today_ei_val = recent_bat.get("emotional_impairment_score", 1.3) if recent_bat else 1.3
+    today_ci_val = recent_bat.get("cognitive_impairment_score", 1.3) if recent_bat else 1.3
 
-    today_score_val = recent_bat["total_bat_score"] if recent_bat else 1.5
-    today_cat = recent_bat.get("category", get_bat_percentile_category(today_score_val, "total")) if recent_bat else "Low"
+    live_checkin_history = []
+    for item in recent_30d_telemetry:
+        b = bat_by_day.get(item["date"])
+        if b:
+            live_checkin_history.append({
+                "date": item["date"],
+                "day_name": item["day_name"],
+                "is_weekend": item["is_weekend"],
+                "completed": True,
+                "score": b["total_bat_score"],
+                "category": b["category"],
+                "status": b["clinical_status"],
+                "exhaustion": b["exhaustion_score"],
+                "exhaustion_category": b["exhaustion_category"],
+                "mental_distance": b["mental_distance_score"],
+                "mental_distance_category": b["mental_distance_category"],
+                "emotional": b["emotional_impairment_score"],
+                "emotional_category": b["emotional_category"],
+                "cognitive": b["cognitive_impairment_score"],
+                "cognitive_category": b["cognitive_category"],
+            })
+        else:
+            live_checkin_history.append({
+                "date": item["date"],
+                "day_name": item["day_name"],
+                "is_weekend": item["is_weekend"],
+                "completed": False,
+                "score": None,
+                "category": None,
+                "status": None,
+                "exhaustion": None,
+                "exhaustion_category": None,
+                "mental_distance": None,
+                "mental_distance_category": None,
+                "emotional": None,
+                "emotional_category": None,
+                "cognitive": None,
+                "cognitive_category": None,
+            })
 
     bat12_summary = {
         "today_submitted": recent_bat is not None,
@@ -287,54 +421,78 @@ def build_live_employee_dashboard() -> Dict[str, Any]:
         "today_score_text": today_cat,
         "today_score_desc": today_cat,
         "today_status": recent_bat.get("clinical_status", "Green") if recent_bat else "Green",
-        "today_exhaustion": recent_bat.get("exhaustion_score", 1.4) if recent_bat else 1.4,
-        "today_exhaustion_category": recent_bat.get("exhaustion_category", get_bat_percentile_category(1.4, "exhaustion")) if recent_bat else get_bat_percentile_category(1.4, "exhaustion"),
-        "today_mental_distance": recent_bat.get("mental_distance_score", 1.3) if recent_bat else 1.3,
-        "today_mental_distance_category": recent_bat.get("mental_distance_category", get_bat_percentile_category(1.3, "mental_distance")) if recent_bat else get_bat_percentile_category(1.3, "mental_distance"),
-        "today_emotional": recent_bat.get("emotional_impairment_score", 1.3) if recent_bat else 1.3,
-        "today_emotional_category": recent_bat.get("emotional_category", get_bat_percentile_category(1.3, "emotional_impairment")) if recent_bat else get_bat_percentile_category(1.3, "emotional_impairment"),
-        "today_cognitive": recent_bat.get("cognitive_impairment_score", 1.3) if recent_bat else 1.3,
-        "today_cognitive_category": recent_bat.get("cognitive_category", get_bat_percentile_category(1.3, "cognitive_impairment")) if recent_bat else get_bat_percentile_category(1.3, "cognitive_impairment"),
-        "baseline_bat_score": 1.5,
-        "baseline_bat_status": "Low",
-        "usual_checkin_score": 1.5,
-        "usual_checkin_category": "Low",
-        "usual_checkin_desc": "Low",
-        "usual_checkin_text": "Your usual check-in: Low",
-        "usual_range": {"min": 1.2, "max": 1.8},
-        "checkin_history": [
-            {
-                "date": item["date"],
-                "day_name": item["day_name"],
-                "is_weekend": item["is_weekend"],
-                "score": 1.5,
-                "category": "Low",
-                "status": "Green",
-                "exhaustion": 1.4,
-                "exhaustion_category": "Low",
-                "mental_distance": 1.3,
-                "mental_distance_category": "Low",
-                "emotional": 1.3,
-                "emotional_category": "Low",
-                "cognitive": 1.3,
-                "cognitive_category": "Low",
-            }
-            for item in recent_30d_telemetry
-        ],
-        "verified_stress_day": False,
+        "today_exhaustion": today_ex_val,
+        "today_exhaustion_category": recent_bat.get("exhaustion_category", get_bat_percentile_category(today_ex_val, "exhaustion")) if recent_bat else get_bat_percentile_category(today_ex_val, "exhaustion"),
+        "today_mental_distance": today_md_val,
+        "today_mental_distance_category": recent_bat.get("mental_distance_category", get_bat_percentile_category(today_md_val, "mental_distance")) if recent_bat else get_bat_percentile_category(today_md_val, "mental_distance"),
+        "today_emotional": today_ei_val,
+        "today_emotional_category": recent_bat.get("emotional_category", get_bat_percentile_category(today_ei_val, "emotional_impairment")) if recent_bat else get_bat_percentile_category(today_ei_val, "emotional_impairment"),
+        "today_cognitive": today_ci_val,
+        "today_cognitive_category": recent_bat.get("cognitive_category", get_bat_percentile_category(today_ci_val, "cognitive_impairment")) if recent_bat else get_bat_percentile_category(today_ci_val, "cognitive_impairment"),
+        "baseline_bat_score": round(usual_bat_val, 1),
+        "baseline_bat_status": usual_cat,
+        "usual_checkin_score": round(usual_bat_val, 1),
+        "usual_checkin_category": usual_cat,
+        "usual_checkin_desc": usual_cat,
+        "usual_checkin_text": f"Your usual check-in: {usual_cat}",
+        "usual_range": {"min": round(max(1.0, usual_bat_val - 0.3), 1), "max": round(min(5.0, usual_bat_val + 0.3), 1)},
+        "checkin_history": live_checkin_history,
+        "verified_stress_day": bool(recent_bat.get("verified_stressed_day", False)) if recent_bat else False,
         "raw_responses": recent_bat.get("raw_responses") if recent_bat else None,
     }
 
+    # Compute live baseline bands from observed active telemetry days
+    def _live_band(key: str, default_band: Dict[str, float]) -> Dict[str, float]:
+        vals = [float(d[key]) for d in active_daily_metrics if d.get(key) is not None and d[key] > 0]
+        if len(vals) < 2:
+            return default_band
+        med = float(np.median(vals))
+        mad = float(np.median([abs(v - med) for v in vals]))
+        if mad == 0:
+            mad = max(1.0, med * 0.15)
+        return {
+            "median": round(med, 1),
+            "min": round(max(0.0, med - 1.2 * mad), 1),
+            "max": round(med + 1.2 * mad, 1),
+        }
+
     baseline_bands = {
-        "stretch": {"median": 55.0, "min": 35.0, "max": 80.0},
-        "lunch": {"median": 45.0, "min": 30.0, "max": 60.0},
-        "focus": {"median": 110.0, "min": 60.0, "max": 160.0},
-        "after_hours_mins": {"median": 0.0, "min": 0.0, "max": 30.0},
+        "stretch": _live_band("stretch_mins", {"median": 55.0, "min": 35.0, "max": 80.0}),
+        "lunch": _live_band("lunch_mins", {"median": 45.0, "min": 30.0, "max": 60.0}),
+        "focus": _live_band("focus_mins", {"median": 110.0, "min": 60.0, "max": 160.0}),
+        "after_hours_mins": _live_band("after_hours_mins", {"median": 0.0, "min": 0.0, "max": 30.0}),
         "after_hours_msgs": {"median": 0, "min": 0, "max": 2},
-        "wpm": {"median": 32.0, "min": 24.0, "max": 42.0},
-        "backspace_ratio": {"median": 6.5, "min": 3.0, "max": 12.0},
-        "mouse": {"median": 260.0, "min": 180.0, "max": 380.0},
+        "wpm": _live_band("wpm", {"median": 32.0, "min": 24.0, "max": 42.0}),
+        "backspace_ratio": _live_band("backspace_ratio", {"median": 6.5, "min": 3.0, "max": 12.0}),
+        "mouse": _live_band("mouse_speed", {"median": 260.0, "min": 180.0, "max": 380.0}),
     }
+
+    def _live_z(today_val: float, band: Dict[str, float]) -> float:
+        vals_med = band["median"]
+        spread = max(1.0, (band["max"] - band["min"]) / 2.4)
+        if today_val == 0 and vals_med == 0:
+            return 0.0
+        return round((today_val - vals_med) / (1.4826 * spread), 2)
+
+    today_item = daily_items[-1]
+    if len(active_daily_metrics) >= 2 and today_item.get("stretch_mins", 0) > 0:
+        live_deviations = {
+            "work_stretch": _live_z(today_item["stretch_mins"], baseline_bands["stretch"]),
+            "after_hours": _live_z(today_item["after_hours_mins"], baseline_bands["after_hours_mins"]),
+            "lunch_break": _live_z(today_item["lunch_mins"], baseline_bands["lunch"]),
+            "typing_speed": _live_z(today_item["wpm"], baseline_bands["wpm"]),
+            "error_rate": _live_z(today_item["backspace_ratio"], baseline_bands["backspace_ratio"]),
+            "focus_fragmentation": 0.0,
+        }
+    else:
+        live_deviations = {
+            "work_stretch": 0.0,
+            "after_hours": 0.0,
+            "lunch_break": 0.0,
+            "typing_speed": 0.0,
+            "error_rate": 0.0,
+            "focus_fragmentation": 0.0,
+        }
 
     nudges = [
         {
@@ -358,7 +516,7 @@ def build_live_employee_dashboard() -> Dict[str, Any]:
             "days_required": 14,
             "progress_pct": min(100.0, round((days_collected / 14.0) * 100, 1)),
             "is_calibrated": is_calibrated,
-            "bat12_completed": 1 if recent_bat else 0,
+            "bat12_completed": bat12_completed,
         },
         "current_status": "Steady",
         "predicted_status_5d": "Calibration" if not is_calibrated else "Steady",
@@ -366,14 +524,7 @@ def build_live_employee_dashboard() -> Dict[str, Any]:
         "risk_score": None if not is_calibrated else 0.10,
         "status_description": f"WorkSense is getting to know your typical work habits (Day {days_collected} of 14). During this time, we learn your normal rhythm so that future suggestions are tailored just for you.",
         "primary_drivers": [],
-        "relative_deviations": {
-            "work_stretch": 0.05,
-            "after_hours": 0.0,
-            "lunch_break": 0.0,
-            "typing_speed": 0.02,
-            "error_rate": -0.05,
-            "focus_fragmentation": 0.0,
-        },
+        "relative_deviations": live_deviations,
         "recent_7d_telemetry": recent_7d_telemetry,
         "recent_30d_telemetry": recent_30d_telemetry,
         "baseline_bands": baseline_bands,
@@ -480,6 +631,16 @@ def load_application_state():
 @app.on_event("startup")
 def startup_event():
     load_application_state()
+
+
+@app.on_event("shutdown")
+def shutdown_event():
+    lc = DATA_CACHE.get("lifecycle")
+    if lc:
+        try:
+            lc.stop()
+        except Exception:
+            pass
 
 
 class BAT12Submission(BaseModel):
@@ -785,10 +946,11 @@ def get_employee_dashboard(
 
 @app.post("/api/employee/survey/bat12")
 def submit_bat12_survey(submission: BAT12Submission):
+    local_tz = _get_local_tz()
     try:
-        logical_day = date.fromisoformat(submission.logical_day) if submission.logical_day else datetime.now(timezone.utc).date()
+        logical_day = date.fromisoformat(submission.logical_day) if submission.logical_day else datetime.now(local_tz).date()
     except Exception:
-        logical_day = datetime.now(timezone.utc).date()
+        logical_day = datetime.now(local_tz).date()
 
     # Handle skipped items by imputing dimension mean or neutral 2
     raw_items = submission.items or {}

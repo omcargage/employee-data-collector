@@ -124,7 +124,7 @@ window.WORK_SENSE_STRINGS = {
       term: "Daily rhythm comparison",
       label: "How are differences shown?",
       short: "Daily rhythm comparison",
-      description: "How today compares with your usual rhythm: Typical (normal), A bit different, or Much different."
+      description: "How today compares with your usual rhythm: Typical (normal), A bit different, or Highly deviated."
     },
     temporalNN: {
       term: "Early warning system",

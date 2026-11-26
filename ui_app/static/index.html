@@ -635,7 +635,7 @@
 
     // =========================================================================
     // REUSABLE COMPONENT: DeviationBar
-    // Center = "Your usual", Bands: Typical / A bit different / Much different
+    // Center = "Your usual", Bands: Typical / A bit different / Highly deviated
     // Shows "changed" instead of "worse" for ambiguous metrics (typing speed).
     // Exact numbers on hover.
     // =========================================================================
@@ -650,7 +650,7 @@
       let barColor = "var(--border-strong)";
 
       if (absVal >= 2.5) {
-        bandLabel = "Much different";
+        bandLabel = "Highly deviated";
         bandColor = "var(--status-overloaded)";
         bandBg = "var(--status-overloaded-bg)";
         barColor = "var(--status-overloaded)";
@@ -1442,7 +1442,7 @@
                   WorkSense is observing your desktop habits across typing pace, continuous focus stretches, and breaks to establish your personal baseline. No burnout status is generated during this 14-day calibration window.
                 </p>
                 <div className="text-xs text-[var(--text-muted)] pt-1">
-                  Daily check-ins completed: <strong className="text-[var(--text-primary)]">{calibration_progress.bat12_completed || daysCollected} of {daysRequired}</strong>
+                  Daily check-ins completed: <strong className="text-[var(--text-primary)]">{calibration_progress.bat12_completed ?? daysCollected} of {daysRequired}</strong>
                 </div>
               </div>
 
@@ -1769,27 +1769,45 @@
           };
         }
 
-        // Count continuous completed days backwards
-        // In dataset, historical items have score > 0
-        let count = isDoneToday ? 1 : 0;
-        const startIdx = history.length - 2; // start from yesterday
+        const isItemDone = (item, isTodayItem) => {
+          if (isTodayItem) return isDoneToday;
+          if (!item) return false;
+          if (item.completed !== undefined && item.completed !== null) {
+            return Boolean(item.completed);
+          }
+          return Boolean(item.score !== null && item.score !== undefined && item.score > 0);
+        };
+
+        // Count real continuous streak backwards from today (or yesterday if today pending)
+        let currentStreak = isDoneToday ? 1 : 0;
+        const startIdx = history.length - 2; // yesterday index
         for (let i = startIdx; i >= 0; i--) {
-          const item = history[i];
-          if (item && item.score && item.score > 0) {
-            count += 1;
+          if (isItemDone(history[i], false)) {
+            currentStreak += 1;
           } else {
             break;
           }
         }
 
-        const effectiveStreak = Math.max(count, isDoneToday ? 6 : 5);
-        const bestStreak = Math.max(effectiveStreak, 14);
+        // Compute real best streak across history
+        let bestStreak = 0;
+        let run = 0;
+        for (let i = 0; i < history.length; i++) {
+          const isTodayItem = i === history.length - 1;
+          if (isItemDone(history[i], isTodayItem)) {
+            run += 1;
+            if (run > bestStreak) bestStreak = run;
+          } else {
+            run = 0;
+          }
+        }
+        bestStreak = Math.max(bestStreak, currentStreak);
 
-        // Week Overview: last 7 days leading up to today
+        // Week Overview: last 7 calendar days leading up to today
         const slice7 = history.slice(-7);
         const weekDays = slice7.map((item, idx) => {
           const isToday = idx === slice7.length - 1;
-          const completed = isToday ? isDoneToday : Boolean(item.score && item.score > 0);
+          const completed = isItemDone(item, isToday);
           const dateParts = item.date ? item.date.split("-") : [];
           const dayNum = dateParts.length === 3 ? parseInt(dateParts[2], 10) : "";
           return {
@@ -1807,7 +1825,7 @@
         const completedCount = weekDays.filter(d => d.completed).length;
 
         return {
-          currentStreak: effectiveStreak,
+          currentStreak,
           bestStreak,
           weekDays,
           completedCount,
@@ -1976,20 +1994,27 @@
       const bandHeight = Math.max(6, bandBottomY - bandTopY);
       const usualLineY = getY(usualVal);
 
-      // Points and Path
-      const points = history.map((d, i) => {
-        const cat = d.category || getBatPercentileCategory(d.score || 1.5, "total");
-        return {
-          x: getX(i),
-          y: getY(d.score || 1.5),
-          score: d.score || 1.5,
-          category: cat,
-          date: d.date,
-          dayName: d.day_name,
-          isWeekend: d.is_weekend,
-          status: d.status || "Green"
-        };
-      });
+      // Points and Path (skip days without an actual check-in submission)
+      const points = history
+        .map((d, i) => {
+          const hasData = d.completed !== undefined && d.completed !== null
+            ? Boolean(d.completed && d.score !== null && d.score !== undefined)
+            : Boolean(d.score !== null && d.score !== undefined && d.score > 0);
+          if (!hasData) return null;
+          const sVal = Number(d.score);
+          const cat = d.category || getBatPercentileCategory(sVal, "total");
+          return {
+            x: getX(i),
+            y: getY(sVal),
+            score: sVal,
+            category: cat,
+            date: d.date,
+            dayName: d.day_name,
+            isWeekend: d.is_weekend,
+            status: d.status || "Green"
+          };
+        })
+        .filter(Boolean);
 
       const linePath = points.length > 0
         ? points.reduce((acc, pt, i) => `${acc} ${i === 0 ? "M" : "L"} ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`, "")
@@ -2145,7 +2170,7 @@
             {/* X-axis date range */}
             <div className="flex justify-between text-[10px] text-[var(--text-muted)] px-1 mt-1">
               <span>{history[0]?.date || "30 days ago"}</span>
-              <span>15 days ago</span>
+              <span>{history.length >= 20 ? "15 days ago" : (history[Math.floor(history.length / 2)]?.date || "")}</span>
               <span className="font-semibold text-[var(--text-secondary)]">Today</span>
             </div>
           </div>
