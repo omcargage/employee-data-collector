@@ -470,15 +470,34 @@
     function getCategoryBadgeClass(category) {
       const cat = String(category || "").toLowerCase();
       if (cat.includes("very high")) {
-        return "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border-rose-200 dark:border-rose-800";
+        return "bg-[var(--status-overloaded-bg)] text-[var(--status-overloaded)] border-[var(--status-overloaded-border)]";
       }
       if (cat.includes("high")) {
-        return "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-800";
+        return "bg-[var(--status-stretched-bg)] text-[var(--status-stretched)] border-[var(--status-stretched-border)]";
       }
       if (cat.includes("average")) {
-        return "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-800";
+        return "bg-[var(--status-calibrating-bg)] text-[var(--status-calibrating)] border-[var(--status-calibrating-border)]";
       }
-      return "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800";
+      return "bg-[var(--status-steady-bg)] text-[var(--status-steady)] border-[var(--status-steady-border)]";
+    }
+
+    function formatStrainCategory(category) {
+      const label = String(category || "Low").trim();
+      return label.toLowerCase().includes("strain") ? label : `${label} strain`;
+    }
+
+    function getStrainWellbeingHint(category) {
+      const cat = String(category || "").toLowerCase();
+      if (cat.includes("very high")) {
+        return "Heavy strain felt today — prioritize rest and stepping away from work.";
+      }
+      if (cat.includes("high")) {
+        return "Elevated strain felt today — give yourself extra breathing room and recovery.";
+      }
+      if (cat.includes("average")) {
+        return "Typical everyday strain — remember short pauses between tasks.";
+      }
+      return "Minimal strain felt today — energy and mental balance look steady.";
     }
 
     const STRINGS = window.WORK_SENSE_STRINGS || {};
@@ -1658,15 +1677,21 @@
                 <h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]">
                   How was your day?
                 </h3>
-                <div className="flex items-center gap-2 pt-1">
+                <div className="flex flex-wrap items-center gap-2 pt-1">
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[var(--status-steady-bg)] text-[var(--status-steady)] border border-[var(--status-steady-border)]">
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
                     </svg>
-                    Done today &check;
+                    Done today
                   </span>
-                  <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${getCategoryBadgeClass(todayCategory)}`}>
-                    {todayCategory}
+                  <span
+                    className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${getCategoryBadgeClass(todayCategory)}`}
+                    title={getStrainWellbeingHint(todayCategory)}
+                  >
+                    {formatStrainCategory(todayCategory)}
+                  </span>
+                  <span className="text-xs text-[var(--text-muted)]">
+                    &bull; {getStrainWellbeingHint(todayCategory)}
                   </span>
                 </div>
                 <p className="text-xs text-[var(--text-secondary)] pt-0.5 leading-relaxed">
@@ -2056,11 +2081,11 @@
                 </h3>
               </div>
 
-              {/* Callout: "Your usual check-in: Low" */}
+              {/* Callout: "Your usual check-in: Low strain" */}
               <div className="p-2.5 px-3.5 rounded-xl bg-[var(--primary-subtle)] border border-[var(--border-subtle)] flex items-center gap-2">
                 <span className="text-xs font-medium text-[var(--text-secondary)]">Your usual check-in:</span>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getCategoryBadgeClass(usualCategory)}`}>
-                  {usualCategory}
+                <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${getCategoryBadgeClass(usualCategory)}`}>
+                  {formatStrainCategory(usualCategory)}
                 </span>
               </div>
             </div>
@@ -2162,7 +2187,7 @@
                   }}
                 >
                   <span className="font-semibold">{points[hoveredPoint].date} ({points[hoveredPoint].dayName}):</span>{" "}
-                  {points[hoveredPoint].category} &bull; {points[hoveredPoint].isWeekend ? "Weekend" : points[hoveredPoint].status}
+                  {formatStrainCategory(points[hoveredPoint].category)} &bull; {points[hoveredPoint].isWeekend ? "Weekend" : points[hoveredPoint].status}
                 </div>
               )}
             </div>
@@ -2204,10 +2229,10 @@
               }
             ].map((dim, i) => (
               <div key={i} className="ws-card p-4 space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">{dim.title}</span>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${getCategoryBadgeClass(dim.category)}`}>
-                    {dim.category}
+                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap ${getCategoryBadgeClass(dim.category)}`}>
+                    {formatStrainCategory(dim.category)}
                   </span>
                 </div>
                 <div className="text-sm font-bold text-[var(--text-primary)]">{dim.subtitle}</div>
@@ -3313,7 +3338,7 @@
               <div className="p-4 rounded-xl bg-[var(--status-steady-bg)] border border-[var(--status-steady-border)] space-y-3">
                 <div className="flex items-center gap-2">
                   <span className="w-5 h-5 rounded-full bg-[var(--status-steady)] text-white flex items-center justify-center text-xs font-bold">
-                    &check;
+                    ✓
                   </span>
                   <span className="text-xs font-bold text-[var(--status-steady)] uppercase tracking-wider">
                     Collected for early warning
@@ -3402,23 +3427,23 @@
                 </p>
                 <div className="space-y-1.5 text-xs text-[var(--text-secondary)]">
                   <div className="flex items-center gap-2">
-                    <span className="text-[var(--status-steady)] font-bold">&check;</span>
+                    <span className="text-[var(--status-steady)] font-bold">✓</span>
                     <span>Exact session stretch times, break lengths, and typing pace</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[var(--status-steady)] font-bold">&check;</span>
+                    <span className="text-[var(--status-steady)] font-bold">✓</span>
                     <span>Your personal 14-day baseline and deviation comparisons</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[var(--status-steady)] font-bold">&check;</span>
+                    <span className="text-[var(--status-steady)] font-bold">✓</span>
                     <span>Individual BAT-12 check-in responses and dimension scores</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[var(--status-steady)] font-bold">&check;</span>
+                    <span className="text-[var(--status-steady)] font-bold">✓</span>
                     <span>Personal recovery suggestions, snoozes, and nudge history</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[var(--status-steady)] font-bold">&check;</span>
+                    <span className="text-[var(--status-steady)] font-bold">✓</span>
                     <span>Export or delete your local records at any time</span>
                   </div>
                 </div>
